@@ -1,4 +1,5 @@
-MNIST
-Music
+MNIST/*
+Music/*
 log
 .ideal
+__pycache__/*
