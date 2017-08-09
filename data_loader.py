@@ -6,6 +6,7 @@ class Dataset():
     def __init__(self, data_name):
         self.data = np.load(data_name)
         self._num_examples = self.data.shape[0]
+        self._dimension = self.data.shape[1]
 
         self._epochs_completed = 0
         self._index_in_epoch = 0
@@ -41,6 +42,10 @@ class Dataset():
     @property
     def num_examples(self):
         return self._num_examples
+        
+    @property
+    def dimension(self):
+        return self._dimension
 
 class DroppedDataset(Dataset):
     def __init__(self, idx_name, *args, **kwargs):
