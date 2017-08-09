@@ -25,5 +25,8 @@ class Drawer():
         """
         return self.fig
 
+def drop_random_element_in_row:
+    
+def drop_one_element_in_matrix:
 
 

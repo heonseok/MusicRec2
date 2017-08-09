@@ -1,5 +1,6 @@
 MNIST/*
 Music/*
 log
-.ideal
+.idea/
 __pycache__/*
+.*

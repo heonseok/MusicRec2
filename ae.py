@@ -1,36 +1,42 @@
 import tensorflow as tf
 import numpy as np
+import os
 
 import logging
 
 flags = tf.app.flags
 
-flags.DEFINE_string("datset", "MNIST", "Dataset (MNIST,Music) for experiment [MNIST]")
+flags.DEFINE_string("model", "AE", "[RBM, AE, VAE, VAE_GAN, VAE_EBGAN]")
+flags.DEFINE_string("dataset", "MNIST", "Dataset (MNIST,Music) for experiment [MNIST]")
 
 flags.DEFINE_integer("epoch", 50, "Epoch to train [50]")
 flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
 flags.DEFINE_integer("batch_size", 100, "Batch size [100]")
-#flags.DEFINE_integer("batch_logging_step", 10, "Logging step for batch [100]")
-#flags.DEFINE_integer("epoch_logging_step", 1, "Logging step for epoch [1]")  # Need?
 
 flags.DEFINE_integer("input_dim", 28*28, "Dimension of input [28*28]")
 flags.DEFINE_string("ae_h_dim_list", "[256]", "List of AE dimensions [256]")
 flags.DEFINE_integer("z_dim", 128, "Dimension of z [128]")
 
-flags.DEFINE_integer("gpu_id", 2, "GPU id [0]")
-flags.DEFINE_string("data_dir", "data", 'Directory name to load input data [data]')
-flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
-flags.DEFINE_string("log_dir", "log", "Directory name to save the logs [log]")
+flags.DEFINE_integer("gpu_id", 3, "GPU id [0]")
+#flags.DEFINE_string("data_dir", "data", 'Directory name to load input data [data]')
+#flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
+#flags.DEFINE_string("log_dir", "log", "Directory name to save the logs [log]")
 flags.DEFINE_boolean("is_train", False, "True for training, False for testing [Fasle]")
 flags.DEFINE_boolean("continue_train", None,
                      "True to continue training from saved checkpoint. False for restarting. None for automatic [None]")
 FLAGS = flags.FLAGS
 
-if FLAGS.datset == "MNIST":
+model_spec = 'm' + FLAGS.model + '_lr' + str(FLAGS.learning_rate) + '_b' + str(FLAGS.batch_size) + '_i' + str(FLAGS.input_dim) + \
+             '_h' + FLAGS.ae_h_dim_list + '_z' + str(FLAGS.z_dim)
+    
+if FLAGS.dataset == "MNIST":
     import matplotlib.pyplot as plt
     from utils import Drawer
     drawer = Drawer()
     draw_flag = True
+    image_dir = os.path.join("MNIST/images_visualized", model_spec)
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
 
     from tensorflow.examples.tutorials.mnist import input_data
     data = input_data.read_data_sets("MNIST/data/", one_hot=True)
@@ -40,11 +46,19 @@ elif FLAGS.dataset == "Music":
     draw_flag = False
     data = data_loader.load_music_data()
 
+log_dir = os.path.join(*[FLAGS.dataset, "log", model_spec])
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+ckpt_dir = os.path.join(*[FLAGS.dataset, "ceckpoint", model_spec])
+if not os.path.exists(ckpt_dir):
+    os.makedirs(ckpt_dir)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 sh = logging.StreamHandler()
-fh = logging.FileHandler(FLAGS.log_dir)
+fh = logging.FileHandler(os.path.join(log_dir, 'log'))
 
 fmt = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
 sh.setFormatter(fmt)
@@ -65,7 +79,7 @@ def main(_):
         dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
 
         previous_layer = X
-        for idx, enc_h_dim in enumerate(enc_h_dim_list):
+        for idx, enc_h_dim in enumerate(enlc_h_dim_list):
             print(idx, enc_h_dim)
             previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu)
 
@@ -121,10 +135,13 @@ def main(_):
                     sample_size = 16
                     samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
                     fig = drawer.plot(samples)
-                    plt.savefig('out_ae/{}.png'.format(str(epoch_idx+1).zfill(3)), bbox_inches='tight')
+                    plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx+1).zfill(3)), bbox_inches='tight')
+
+            ##### TEST #####
+            if FLAGS.dataset == "Music":
+                test_batch_total = int(data.test.num_examples / FLAGS.batch_size)
+           
 
 
 if __name__ == '__main__':
     tf.app.run()
-
-
