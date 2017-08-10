@@ -3,6 +3,7 @@ import numpy as np
 import os
 import logging
 
+
 def main(_):
     logger.info("Running AE")
 
@@ -28,8 +29,10 @@ def main(_):
         init = tf.global_variables_initializer()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        config.log_device_placement = True
+        #config.log_device_placement = True
 
+        with tf.device('cpu:0'):
+            saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.max_to_keep)
 
         with tf.Session(config=config) as sess:
             sess.run(init)
@@ -39,6 +42,11 @@ def main(_):
 
             train_logging_step = int(train_batch_total/10);
             valid_logging_step = int(valid_batch_total/10);
+
+            best_valid_total_cost = float('inf')
+            best_model_idx = 0
+            best_save_path = ''
+            valid_non_improve_count = 0
 
             for epoch_idx in range(FLAGS.epoch):
                 train_total_cost = 0
@@ -58,6 +66,7 @@ def main(_):
                     if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
                         logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx + 1, batch_idx + 1, train_batch_total, cost_val))
                 logger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx+1, train_total_cost/train_batch_total))
+                save_path = saver.save(sess, ckpt_path, global_step=epoch_idx) 
 
 
                 ##### VALIDATION #####
@@ -75,14 +84,32 @@ def main(_):
                         logger.debug('Epoch %.3i, Batch[%.3i/%i], Valid loss: %.4E' % (epoch_idx + 1, batch_idx + 1, valid_batch_total, cost_val))
                 logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx + 1, valid_total_cost / valid_batch_total))
 
+                ## Update best_valid_total_cost
+                if valid_total_cost < best_valid_total_cost:
+                    best_valid_total_cost = valid_total_cost
+                    valid_non_improve_count = 0
+                    best_model_idx = epoch_idx 
+                    best_save_path = save_path
+                else:
+                    valid_non_improve_count += 1
+                    logger.info("Valid cost has not been improved for %d epochs" % valid_non_improve_count)
+                    if valid_non_improve_count == 10:
+                        break
+
                 if mnist_flag == True:
                     sample_size = 16
                     samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
                     fig = drawer.plot(samples)
                     plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx+1).zfill(3)), bbox_inches='tight')
 
+            logger.info("Best model idx : " + str(best_model_idx))
+
+        with tf.Session(config=config) as sess:
+            test_total_cost = 0
             ##### TEST #####
             if FLAGS.dataset == "Music":
+                saver.restore(sess, ckpt_path+"-"+str(best_model_idx))
+
                 test_batch_total = int(data.test.num_examples / FLAGS.batch_size)
                 test_logging_step = int(test_batch_total/10);
 
@@ -92,8 +119,8 @@ def main(_):
                     test_total_cost += cost_val
                     #if ((batch_idx+1) % test_logging_step == 0):
                     if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                        logger.debug('Epoch %.3i, Batch[%.3i/%i], Valid loss: %.4E' % (epoch_idx + 1, batch_idx + 1, test_batch_total, cost_val))
-                logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx + 1, test_total_cost / test_batch_total))
+                        logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (epoch_idx + 1, batch_idx + 1, test_batch_total, cost_val))
+                logger.debug('Epoch %.3i, Test loss: %.4E' % (epoch_idx + 1, test_total_cost / test_batch_total))
            
 
 
@@ -111,19 +138,23 @@ if __name__ == '__main__':
     flags.DEFINE_string("ae_h_dim_list", "[256]", "List of AE dimensions [256]")
     flags.DEFINE_integer("z_dim", 128, "Dimension of z [128]")
 
-    flags.DEFINE_integer("epoch", 20, "Epoch to train [50]")
+    flags.DEFINE_integer("epoch", 100, "Epoch to train [50]")
     flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
-    flags.DEFINE_integer("batch_size", 1024, "Batch size [100]")
+    flags.DEFINE_integer("batch_size", 2048, "Batch size [100]")
     flags.DEFINE_integer("batch_logging_step", 10, "Batch size [100]")
 
 
+    flags.DEFINE_integer("max_to_keep", "10", "maximum number of recent checkpoint files to keep[ckpt]")
+
     #flags.DEFINE_string("data_dir", "data", 'Directory name to load input data [data]')
-    #flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
+    #flags.DEFINE_string("checkpoint_dir", "ckpt", "Directory name to save the checkpoints [checkpoint]")
     #flags.DEFINE_string("log_dir", "log", "Directory name to save the logs [log]")
 
     FLAGS = flags.FLAGS
 
-    model_spec = 'm' + FLAGS.model + '_lr' + str(FLAGS.learning_rate) + '_b' + str(FLAGS.batch_size) + '_h' + FLAGS.ae_h_dim_list + '_z' + str(FLAGS.z_dim)
+    # ckpt path should not contain '[' or ']'
+    ae_h_dim_list_replaced = FLAGS.ae_h_dim_list.replace('[','').replace(']','').replace(',','-') 
+    model_spec = 'm' + FLAGS.model + '_lr' + str(FLAGS.learning_rate) + '_b' + str(FLAGS.batch_size) + '_h' + ae_h_dim_list_replaced + '_z' + str(FLAGS.z_dim)
         
     if FLAGS.dataset == "MNIST":
         mnist_flag = True
@@ -148,9 +179,10 @@ if __name__ == '__main__':
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    ckpt_dir = os.path.join(*[FLAGS.dataset, "ceckpoint", model_spec])
+    ckpt_dir = os.path.join(*[FLAGS.dataset, "ckpt", model_spec])
     if not os.path.exists(ckpt_dir):
         os.makedirs(ckpt_dir)
+    ckpt_path = os.path.join(ckpt_dir, "model_ckpt")
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
