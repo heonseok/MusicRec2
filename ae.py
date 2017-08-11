@@ -40,7 +40,7 @@ class AE():
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
         _, cost_val = sess.run([self.solver, self.cost], feed_dict={self.X: batch_xs})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx + 1, batch_idx + 1, train_batch_total, cost_val))
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, train_batch_total, cost_val))
         #ogger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx+1, train_total_cost / train_batch_total))
         return cost_val
         
@@ -48,7 +48,7 @@ class AE():
     def inference(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
         cost_val = sess.run(self.cost, feed_dict={self.X: batch_xs})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx + 1, batch_idx + 1, train_batch_total, cost_val))
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, train_batch_total, cost_val))
         return cost_val
 
 """

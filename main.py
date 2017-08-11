@@ -59,7 +59,7 @@ def main(_):
                     train_total_cost += cost_val
 
                     #if((batch_idx+1) % train_logging_step == 0):
-                logger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx+1, train_total_cost / train_batch_total))
+                logger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx, train_total_cost / train_batch_total))
                 save_path = saver.save(sess, ckpt_path, global_step=epoch_idx) 
 
 
@@ -83,7 +83,7 @@ def main(_):
                     #if ((batch_idx+1) % valid_logging_step == 0):
                     #if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
                         #logger.debug('Epoch %.3i, Batch[%.3i/%i], Valid loss: %.4E' % (epoch_idx + 1, batch_idx + 1, valid_batch_total, cost_val))
-                logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx + 1, valid_total_cost / valid_batch_total))
+                logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx, valid_total_cost / valid_batch_total))
 
                 ## Update best_valid_total_cost
                 if valid_total_cost < best_valid_total_cost:
@@ -101,11 +101,11 @@ def main(_):
                     sample_size = 16
                     samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
                     fig = drawer.plot(samples)
-                    plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx+1).zfill(3)), bbox_inches='tight')
+                    plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx).zfill(3)), bbox_inches='tight')
 
             logger.info("Best model idx : " + str(best_model_idx))
-            f = open(ckpt_path+'/best_model_idx.txt','w')
-            f.write(best_model)
+            f = open(ckpt_dir+'/best_model_idx.txt','w')
+            f.write(str(best_model_idx))
             f.close()
 
     ##### TEST #####
@@ -115,10 +115,9 @@ def main(_):
             if FLAGS.is_train == False:
                 if tf.train.get_checkpoint_state(ckpt_dir):
                     f = open(ckpt_dir+'/best_model_idx.txt','r')
-                    best_model_idx = f.readline().strip()
+                    best_model_idx = eval(f.readline().strip())
 
             saver.restore(sess, ckpt_path+"-"+str(best_model_idx))
-            epoch_idx = eval(best_model_idx)
 
             test_batch_total = int(data.test.num_examples / FLAGS.batch_size)
             test_logging_step = int(test_batch_total/10);
@@ -127,18 +126,18 @@ def main(_):
                 batch_xs, batch_idxs = data.test.next_batch_with_idx(FLAGS.batch_size)
 
                 if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                    #logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx + 1, batch_idx + 1, train_batch_total, cost_val))
+                    #logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (best_model_idx + 1, batch_idx + 1, train_batch_total, cost_val))
                     log_flag = True
                 else:
                     log_flag = False
 
-                cost_val = model.inference(sess, batch_xs, epoch_idx, batch_idx, test_batch_total, log_flag)
+                cost_val = model.inference(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag)
                 #cost_val = sess.run(cost, feed_dict={X: batch_xs})
                 test_total_cost += cost_val
                 #if ((batch_idx+1) % test_logging_step == 0):
                 #if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                    #logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (epoch_idx + 1, batch_idx + 1, test_batch_total, cost_val))
-            logger.debug('Epoch %.3i, Test loss: %.4E' % (epoch_idx + 1, test_total_cost / test_batch_total))
+                    #logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (best_model_idx + 1, batch_idx + 1, test_batch_total, cost_val))
+            logger.debug('Epoch %.3i, Test loss: %.4E' % (best_model_idx, test_total_cost / test_batch_total))
 
 if __name__ == '__main__':
     flags = tf.app.flags
