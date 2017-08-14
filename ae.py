@@ -21,6 +21,7 @@ class AE():
     def build_model(self):
         with tf.device('/gpu:%d' % self.gpu_id):
             self.X = tf.placeholder(tf.float32, [None, self.input_dim])
+            self.k = tf.placeholder(tf.int32)
 
             previous_layer = self.X
             for idx, enc_h_dim in enumerate(self.enc_h_dim_list):
@@ -37,6 +38,10 @@ class AE():
             #cost_summary = tf.summary.scalar('cost', cost)
             self.solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.cost)
 
+            ### Recommendaiton metric ###
+        with tf.device('/cpu:0'):
+            self.top_k_op = tf.nn.top_k(output, self.k)
+
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
         _, cost_val = sess.run([self.solver, self.cost], feed_dict={self.X: batch_xs})
         if log_flag == True:
@@ -45,9 +50,14 @@ class AE():
         return cost_val
         
 
-    def inference(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
+    def inference(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
         cost_val = sess.run(self.cost, feed_dict={self.X: batch_xs})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, train_batch_total, cost_val))
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, cost_val))
         return cost_val
 
+    def inference_with_top_k(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, k):
+        cost_val, top_k = sess.run([self.cost, self.top_k_op], feed_dict={self.X: batch_xs, self.k: k})
+        if log_flag == True:
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, cost_val))
+        return cost_val, top_k

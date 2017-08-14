@@ -112,6 +112,8 @@ def main(_):
     if FLAGS.dataset == "Music":
         with tf.Session(config=config) as sess:
             test_total_cost = 0
+            top_k_accuracy = 0
+
             if FLAGS.is_train == False:
                 if tf.train.get_checkpoint_state(ckpt_dir):
                     f = open(ckpt_dir+'/best_model_idx.txt','r')
@@ -131,13 +133,24 @@ def main(_):
                 else:
                     log_flag = False
 
-                cost_val = model.inference(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag)
+                #cost_val = model.inference(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag)
+                cost_val, top_k = model.inference_with_top_k(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag, FLAGS.k)
                 #cost_val = sess.run(cost, feed_dict={X: batch_xs})
                 test_total_cost += cost_val
+
+                values, indices = top_k 
+                print(indices.shape)
+
+                in_top_k = np.any(np.isclose(batch_idx, np.transpose(indices)), axis=0)
+                print(in_top_k.shape)
+
+                top_k_accuracy += np.sum(in_top_k)
+
                 #if ((batch_idx+1) % test_logging_step == 0):
                 #if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
                     #logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (best_model_idx + 1, batch_idx + 1, test_batch_total, cost_val))
-            logger.debug('Epoch %.3i, Test loss: %.4E' % (best_model_idx, test_total_cost / test_batch_total))
+            logger.debug('Model %.3i, Test loss: %.4E' % (best_model_idx, test_total_cost / test_batch_total))
+            logger.info("Top %d accuracy : %.4E" % (FLAGS.k, top_k_accuracy/(FLAGS.batch_size*test_batch_total)))
 
 if __name__ == '__main__':
     flags = tf.app.flags
@@ -157,6 +170,7 @@ if __name__ == '__main__':
     flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
     flags.DEFINE_integer("batch_size", 2048, "Batch size [100]")
     flags.DEFINE_integer("batch_logging_step", 10, "Batch size [100]")
+    flags.DEFINE_integer("k", 5, "k for top k measure[5]")
 
 
     flags.DEFINE_integer("max_to_keep", "11", "maximum number of recent checkpoint files to keep[ckpt]")
