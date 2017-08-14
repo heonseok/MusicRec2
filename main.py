@@ -3,11 +3,11 @@ import numpy as np
 import os
 import logging
 from ae import AE
+from vae import VAE
 
 
 def main(_):
     logger.info("Running AE")
-    model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
 
     init = tf.global_variables_initializer()
     config = tf.ConfigProto()
@@ -162,6 +162,7 @@ if __name__ == '__main__':
     ae_h_dim_list_replaced = FLAGS.ae_h_dim_list.replace('[','').replace(']','').replace(',','-') 
     model_spec = 'm' + FLAGS.model + '_lr' + str(FLAGS.learning_rate) + '_b' + str(FLAGS.batch_size) + '_h' + ae_h_dim_list_replaced + '_z' + str(FLAGS.z_dim)
         
+
     if FLAGS.dataset == "MNIST":
         mnist_flag = True
         import matplotlib.pyplot as plt
@@ -206,5 +207,11 @@ if __name__ == '__main__':
 
     logger.addHandler(sh)
     logger.addHandler(fh)
+
+    ### Build model ###
+    if FLAGS.model == 'AE': 
+        model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
+    elif FLAGS.model == 'VAE':
+        model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
 
     tf.app.run()
