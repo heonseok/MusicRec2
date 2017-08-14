@@ -24,6 +24,3 @@ class Drawer():
         #f.show()
         """
         return self.fig
-
-
-

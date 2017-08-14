@@ -32,7 +32,6 @@ def main(_):
 
             best_valid_total_cost = float('inf')
             best_model_idx = 0
-            #best_save_path = ''
             valid_non_improve_count = 0
 
             for epoch_idx in range(FLAGS.epoch):
@@ -47,7 +46,6 @@ def main(_):
                         batch_xs = data.train.next_batch(FLAGS.batch_size)
 
                     if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                        #logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx + 1, batch_idx + 1, train_batch_total, cost_val))
                         log_flag = True
                     else:
                         log_flag = False
@@ -58,7 +56,6 @@ def main(_):
                     #_, cost_val = sess.run([solver, cost], feed_dict={X: batch_xs})
                     train_total_cost += cost_val
 
-                    #if((batch_idx+1) % train_logging_step == 0):
                 logger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx, train_total_cost / train_batch_total))
                 save_path = saver.save(sess, ckpt_path, global_step=epoch_idx) 
 
@@ -71,18 +68,13 @@ def main(_):
                         batch_xs = data.validation.next_batch(FLAGS.batch_size)
 
                     if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                        #logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx + 1, batch_idx + 1, train_batch_total, cost_val))
                         log_flag = True
                     else:
                         log_flag = False
 
                     cost_val = model.inference(sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag)
-                    #cost_val = sess.run(cost, feed_dict={X: batch_xs})
                     valid_total_cost += cost_val
 
-                    #if ((batch_idx+1) % valid_logging_step == 0):
-                    #if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                        #logger.debug('Epoch %.3i, Batch[%.3i/%i], Valid loss: %.4E' % (epoch_idx + 1, batch_idx + 1, valid_batch_total, cost_val))
                 logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx, valid_total_cost / valid_batch_total))
 
                 ## Update best_valid_total_cost
@@ -128,27 +120,17 @@ def main(_):
                 batch_xs, batch_idxs = data.test.next_batch_with_idx(FLAGS.batch_size)
 
                 if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                    #logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (best_model_idx + 1, batch_idx + 1, train_batch_total, cost_val))
                     log_flag = True
                 else:
                     log_flag = False
 
-                #cost_val = model.inference(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag)
                 cost_val, top_k = model.inference_with_top_k(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag, FLAGS.k)
-                #cost_val = sess.run(cost, feed_dict={X: batch_xs})
                 test_total_cost += cost_val
 
                 values, indices = top_k 
-                print(indices.shape)
-
                 in_top_k = np.any(np.isclose(batch_idx, np.transpose(indices)), axis=0)
-                print(in_top_k.shape)
-
                 top_k_accuracy += np.sum(in_top_k)
 
-                #if ((batch_idx+1) % test_logging_step == 0):
-                #if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
-                    #logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (best_model_idx + 1, batch_idx + 1, test_batch_total, cost_val))
             logger.debug('Model %.3i, Test loss: %.4E' % (best_model_idx, test_total_cost / test_batch_total))
             logger.info("Top %d accuracy : %.4E" % (FLAGS.k, top_k_accuracy/(FLAGS.batch_size*test_batch_total)))
 
@@ -170,14 +152,9 @@ if __name__ == '__main__':
     flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
     flags.DEFINE_integer("batch_size", 2048, "Batch size [100]")
     flags.DEFINE_integer("batch_logging_step", 10, "Batch size [100]")
-    flags.DEFINE_integer("k", 5, "k for top k measure[5]")
+    flags.DEFINE_integer("k", 5, "k for top k measure [5]")
 
-
-    flags.DEFINE_integer("max_to_keep", "11", "maximum number of recent checkpoint files to keep[ckpt]")
-
-    #flags.DEFINE_string("data_dir", "data", 'Directory name to load input data [data]')
-    #flags.DEFINE_string("checkpoint_dir", "ckpt", "Directory name to save the checkpoints [checkpoint]")
-    #flags.DEFINE_string("log_dir", "log", "Directory name to save the logs [log]")
+    flags.DEFINE_integer("max_to_keep", "11", "maximum number of recent checkpoint files to keep [11]")
 
     FLAGS = flags.FLAGS
 
