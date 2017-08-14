@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import tensorflow as tf
 
 class Drawer():
     def __init__(self):
@@ -24,3 +25,13 @@ class Drawer():
         #f.show()
         """
         return self.fig
+
+
+def sample_z(mu, logvar):
+    eps = tf.random_normal(shape=tf.shape(mu))
+    return mu + tf.exp(logvar/2) * eps
+
+
+def kl_divergence_normal_distribution(mu, logvar):
+    return tf.reduce_mean(0.5 * tf.reduce_sum(tf.exp(logvar) + mu**2 -1 -logvar, 1))
+
