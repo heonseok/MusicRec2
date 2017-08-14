@@ -34,30 +34,30 @@ class AE():
 
             output = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
             #cost = tf.reduce_mean(tf.square(X-output))
-            self.cost = tf.losses.mean_squared_error(self.X, output)
+            self.total_loss = tf.losses.mean_squared_error(self.X, output)
             #cost_summary = tf.summary.scalar('cost', cost)
-            self.solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.cost)
+            self.solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.total_loss)
 
             ### Recommendaiton metric ###
         with tf.device('/cpu:0'):
             self.top_k_op = tf.nn.top_k(output, self.k)
 
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
-        _, cost_val = sess.run([self.solver, self.cost], feed_dict={self.X: batch_xs})
+        _, loss_val = sess.run([self.solver, self.total_loss], feed_dict={self.X: batch_xs})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, train_batch_total, cost_val))
-        #ogger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx+1, train_total_cost / train_batch_total))
-        return cost_val
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, train_batch_total, loss_val))
+        #ogger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx+1, train_total_loss / train_batch_total))
+        return loss_val
         
 
     def inference(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
-        cost_val = sess.run(self.cost, feed_dict={self.X: batch_xs})
+        loss_val = sess.run(self.total_loss, feed_dict={self.X: batch_xs})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, cost_val))
-        return cost_val
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
+        return loss_val
 
     def inference_with_top_k(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, k):
-        cost_val, top_k = sess.run([self.cost, self.top_k_op], feed_dict={self.X: batch_xs, self.k: k})
+        loss_val, top_k = sess.run([self.total_loss, self.top_k_op], feed_dict={self.X: batch_xs, self.k: k})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, cost_val))
-        return cost_val, top_k
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
+        return loss_val, top_k
