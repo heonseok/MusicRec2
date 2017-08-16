@@ -54,21 +54,22 @@ class VAE():
             self.top_k_op = tf.nn.top_k(output, self.k)
 
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
-        _, loss_val = sess.run([self.solver, self.total_loss], feed_dict={self.X: batch_xs})
+        _, total_loss_val, recon_loss_val, kl_loss_val = sess.run([self.solver, self.total_loss, self.recon_loss, self.kl_loss], feed_dict={self.X: batch_xs})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, train_batch_total, loss_val))
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Recon loss : %.4E, KL loss : %.4E, Train loss: %.4E' % (epoch_idx, batch_idx + 1, train_batch_total, recon_loss_val, kl_loss_val, total_loss_val))
         #ogger.debug('Epoch %.3i, Train loss: %.4E' % (epoch_idx+1, train_total_loss / train_batch_total))
-        return loss_val
+        return total_loss_val
         
 
     def inference(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
-        loss_val = sess.run(self.total_loss, feed_dict={self.X: batch_xs})
+        total_loss_val, recon_loss_val, kl_loss_val = sess.run([self.total_loss, self.recon_loss, self.kl_loss], feed_dict={self.X: batch_xs})
+
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
-        return loss_val
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Recon loss : %.4E, KL loss : %.4E, Valid loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, recon_loss_val, kl_loss_val, total_loss_val))
+        return total_loss_val
 
     def inference_with_top_k(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, k):
-        loss_val, top_k = sess.run([self.total_loss, self.top_k_op], feed_dict={self.X: batch_xs, self.k: k})
+        total_loss_val, recon_loss_val, kl_loss_val, top_k = sess.run([self.total_loss, self.recon_loss, self.kl_loss, self.top_k_op], feed_dict={self.X: batch_xs, self.k: k})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
-        return loss_val, top_k
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Recon loss : %.4E, KL loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, recon_loss_val, kl_loss_val, total_loss_val))
+        return total_loss_val, top_k

@@ -4,6 +4,7 @@ import os
 import logging
 from ae import AE
 from vae import VAE
+#from vae_gan import VAE_GAN
 
 
 def main(_):
@@ -131,7 +132,7 @@ def main(_):
                 in_top_k = np.any(np.isclose(batch_idx, np.transpose(indices)), axis=0)
                 top_k_accuracy += np.sum(in_top_k)
 
-            logger.debug('Model %.3i, Test loss: %.4E' % (best_model_idx, test_total_cost / test_batch_total))
+            logger.debug('Best model %.3i, Test loss: %.4E' % (best_model_idx, test_total_cost / test_batch_total))
             logger.info("Top %d accuracy : %.4E" % (FLAGS.k, top_k_accuracy/(FLAGS.batch_size*test_batch_total)))
 
 if __name__ == '__main__':
@@ -213,5 +214,7 @@ if __name__ == '__main__':
         model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
     elif FLAGS.model == 'VAE':
         model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
+    elif FLAGS.model == 'VAE_GAN':
+        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
 
     tf.app.run()

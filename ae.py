@@ -53,11 +53,11 @@ class AE():
     def inference(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
         loss_val = sess.run(self.total_loss, feed_dict={self.X: batch_xs})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Valid loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
         return loss_val
 
     def inference_with_top_k(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, k):
         loss_val, top_k = sess.run([self.total_loss, self.top_k_op], feed_dict={self.X: batch_xs, self.k: k})
         if log_flag == True:
-            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
         return loss_val, top_k
