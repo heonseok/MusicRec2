@@ -4,7 +4,7 @@ import os
 import logging
 from ae import AE
 from vae import VAE
-#from vae_gan import VAE_GAN
+from vae_gan import VAE_GAN
 
 
 def main(_):
@@ -84,6 +84,10 @@ def main(_):
                     valid_non_improve_count = 0
                     best_model_idx = epoch_idx 
                     #best_save_path = save_path
+                    logger.info("Best model idx : " + str(best_model_idx))
+                    f = open(ckpt_dir+'/best_model_idx.txt','w')
+                    f.write(str(best_model_idx))
+                    f.close()
                 else:
                     valid_non_improve_count += 1
                     logger.info("Valid cost has not been improved for %d epochs" % valid_non_improve_count)
@@ -96,10 +100,6 @@ def main(_):
                     fig = drawer.plot(samples)
                     plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx).zfill(3)), bbox_inches='tight')
 
-            logger.info("Best model idx : " + str(best_model_idx))
-            f = open(ckpt_dir+'/best_model_idx.txt','w')
-            f.write(str(best_model_idx))
-            f.close()
 
     ##### TEST #####
     if FLAGS.dataset == "Music":
@@ -148,6 +148,7 @@ if __name__ == '__main__':
 
     flags.DEFINE_string("ae_h_dim_list", "[256]", "List of AE dimensions [256]")
     flags.DEFINE_integer("z_dim", 128, "Dimension of z [128]")
+    flags.DEFINE_string("dis_h_dim_list", "[256]", "List of Discriminator dimensions [256]")
 
     flags.DEFINE_integer("epoch", 100, "Epoch to train [50]")
     flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
@@ -215,6 +216,6 @@ if __name__ == '__main__':
     elif FLAGS.model == 'VAE':
         model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
     elif FLAGS.model == 'VAE_GAN':
-        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
+        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim, eval(FLAGS.dis_h_dim_list))
 
     tf.app.run()
