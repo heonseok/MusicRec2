@@ -62,6 +62,11 @@ class VAE_GAN():
                 gen_X = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
 
             """
+
+            dis_logit_real, dis_prob_real = self.discriminator(recon_X, self.dis_h_dim_list, 1, False)
+            dis_logit_fake, dis_prob_fake = self.discriminator(gen_X, self.dis_h_dim_list, 1, True)
+
+            """
             with tf.variable_scope('discriminator') as scope:
                 previous_layer = recon_X 
                 for idx, dis_h_dim in enumerate(self.dis_h_dim_list):
@@ -80,6 +85,7 @@ class VAE_GAN():
 
                 dis_logit_fake = tf.layers.dense(inputs=previous_layer, units=1, activation=None, name='Dis_o1') #, kernel_initializer=tf.contrib.layers.xavier_initializer)
                 dis_prob_fake = tf.nn.sigmoid(dis_logit_fake)
+            """
 
             self.logger.info([x.name for x in tf.global_variables()])
             print([x.name for x in tf.global_variables() if 'enc' in x.name])
@@ -115,7 +121,7 @@ class VAE_GAN():
             self.top_k_op = tf.nn.top_k(recon_X, self.k)
 
     def encoder(self, X, enc_h_dim_list, z_dim):
-        with tf.variable_scope('encoder') as sceop:
+        with tf.variable_scope('enc') as sceop:
             previous_layer = X
             for idx, enc_h_dim in enumerate(enc_h_dim_list):
                 #print(idx, enc_h_dim)
@@ -127,7 +133,7 @@ class VAE_GAN():
             return z_mu, z_logvar 
           
     def decoder(self, z, dec_h_dim_list, dec_dim, reuse_flag):
-        with tf.variable_scope('decoder') as scope:
+        with tf.variable_scope('dec') as scope:
             if reuse_flag == True:
                 scope.reuse_variables()
 
@@ -140,6 +146,21 @@ class VAE_GAN():
 
             return dec_X
         
+    def discriminator(self, X, dis_h_dim_list, dis_dim, reuse_flag):
+        with tf.variable_scope('dis') as scope:
+            if reuse_flag == True:
+                scope.reuse_variables()
+
+            previous_layer = X 
+            for idx, dis_h_dim in enumerate(dis_h_dim_list):
+                #print(idx, dec_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dis_h_dim, activation=tf.nn.relu, name='h%d'%dis_h_dim)
+
+            dis_logit = tf.layers.dense(inputs=previous_layer, units=dis_dim, activation=None, name='dis%d'%dis_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            dis_prob = tf.nn.sigmoid(dis_logit)
+
+            return dis_logit, dis_prob
+
     def train(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
         _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs})
         _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.X: batch_xs})
