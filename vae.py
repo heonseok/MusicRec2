@@ -29,21 +29,22 @@ class VAE():
             previous_layer = self.X
             for idx, enc_h_dim in enumerate(self.enc_h_dim_list):
                 #print(idx, enc_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, name='Enc_h%d'%enc_h_dim)
 
-            self.z_mu = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None)
-            self.z_logvar = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None)
+            self.z_mu = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_zmu%d'%self.z_dim)
+            self.z_logvar = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_zlogvar%d'%self.z_dim)
  
             self.z = sample_z(self.z_mu, self.z_logvar)
 
             previous_layer = self.z
             for idx, dec_h_dim in enumerate(self.dec_h_dim_list):
                 #print(idx, dec_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='Dec_h%d'%dec_h_dim)
 
-            output = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            recon_X = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            self.logger.info([x.name for x in tf.global_variables()])
             #cost = tf.reduce_mean(tf.square(X-output))
-            self.recon_loss = tf.losses.mean_squared_error(self.X, output)
+            self.recon_loss = tf.losses.mean_squared_error(self.X, recon_X)
             self.kl_loss = kl_divergence_normal_distribution(self.z_mu, self.z_logvar)
             #cost_summary = tf.summary.scalar('cost', cost)
             self.total_loss = self.recon_loss + self.kl_loss
@@ -51,7 +52,7 @@ class VAE():
 
             ### Recommendaiton metric ###
         with tf.device('/cpu:0'):
-            self.top_k_op = tf.nn.top_k(output, self.k)
+            self.top_k_op = tf.nn.top_k(recon_X, self.k)
 
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
         _, total_loss_val, recon_loss_val, kl_loss_val = sess.run([self.solver, self.total_loss, self.recon_loss, self.kl_loss], feed_dict={self.X: batch_xs})

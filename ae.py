@@ -36,7 +36,7 @@ class AE():
                 previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='Dec_h%d'%dec_h_dim)
 
             recon_X = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
-            print([x.name for x in tf.global_variables()])
+            self.logger.info([x.name for x in tf.global_variables()])
 
             #cost = tf.reduce_mean(tf.square(X-recon_X))
             self.total_loss = tf.losses.mean_squared_error(self.X, recon_X)
