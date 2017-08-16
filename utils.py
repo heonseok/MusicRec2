@@ -29,7 +29,7 @@ class Drawer():
 
 def sample_z(mu, logvar):
     eps = tf.random_normal(shape=tf.shape(mu))
-    return mu + tf.exp(logvar/2) * eps
+    return mu + (logvar/2) * eps
 
 
 def kl_divergence_normal_distribution(mu, logvar):
