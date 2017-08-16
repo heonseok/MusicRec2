@@ -13,7 +13,7 @@ class AE():
         self.input_dim = input_dim
         self.z_dim = z_dim
 
-        self.enc_h_dim_list = [*ae_h_dim_list, z_dim]
+        self.enc_h_dim_list = ae_h_dim_list
         self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
 
         self.build_model()
@@ -26,21 +26,26 @@ class AE():
             previous_layer = self.X
             for idx, enc_h_dim in enumerate(self.enc_h_dim_list):
                 #print(idx, enc_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, name='Enc_h%d'%enc_h_dim)
 
+            self.z = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_z%d'%self.z_dim)
+
+            previous_layer = self.z
             for idx, dec_h_dim in enumerate(self.dec_h_dim_list):
                 #print(idx, dec_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='Dec_h%d'%dec_h_dim)
 
-            output = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
-            #cost = tf.reduce_mean(tf.square(X-output))
-            self.total_loss = tf.losses.mean_squared_error(self.X, output)
+            recon_X = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            print([x.name for x in tf.global_variables()])
+
+            #cost = tf.reduce_mean(tf.square(X-recon_X))
+            self.total_loss = tf.losses.mean_squared_error(self.X, recon_X)
             #cost_summary = tf.summary.scalar('cost', cost)
             self.solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.total_loss)
 
             ### Recommendaiton metric ###
         with tf.device('/cpu:0'):
-            self.top_k_op = tf.nn.top_k(output, self.k)
+            self.top_k_op = tf.nn.top_k(recon_X, self.k)
 
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
         _, loss_val = sess.run([self.solver, self.total_loss], feed_dict={self.X: batch_xs})
