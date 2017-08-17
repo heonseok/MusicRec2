@@ -32,7 +32,8 @@ class VAE(BaseModel):
             #cost = tf.reduce_mean(tf.square(X-output))
 
             ### Loss ###
-            self.recon_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.recon_X_logit, labels=self.X))
+            self.recon_loss = self.recon_loss() 
+            #self.recon_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.recon_X_logit, labels=self.X))
             #self.recon_loss = tf.losses.mean_squared_error(self.X, self.recon_X_prob)
             self.kl_loss = kl_divergence_normal_distribution(self.z_mu, self.z_logvar)
             #cost_summary = tf.summary.scalar('cost', cost)

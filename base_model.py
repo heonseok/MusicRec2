@@ -14,6 +14,11 @@ class BaseModel():
 
         self.w_init = tf.contrib.layers.variance_scaling_initializer()
 
+        self.loss_type = 'CE'
+
+        #self.recon_X_logit = None
+        #self.recon_X = None
+
     def encoder(self, X, enc_h_dim_list, z_dim, keep_prob):
         with tf.variable_scope('enc') as sceop:
             previous_layer = X
@@ -43,3 +48,9 @@ class BaseModel():
             dec_X = tf.layers.dense(inputs=previous_layer, units=dec_dim, activation=None, name='dec%d'%self.input_dim) 
 
             return dec_X
+
+    def recon_loss(self):
+        if self.loss_type == 'CE':
+            return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.recon_X_logit, labels=self.X))
+        elif self.loss_type == 'MSE':
+            return tf.losses.mean_squared_error(self.recon_X, self.X)
