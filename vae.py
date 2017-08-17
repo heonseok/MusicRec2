@@ -14,9 +14,6 @@ class VAE(BaseModel):
         #self.enc_h_dim_list = [*ae_h_dim_list, z_dim]
         self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
 
-        self.keep_prob = 0.9
-        self.w_init = tf.contrib.layers.variance_scaling_initializer()
-        #self.w_init = None 
 
         self.build_model()
 
@@ -25,11 +22,12 @@ class VAE(BaseModel):
             self.X = tf.placeholder(tf.float32, [None, self.input_dim])
             self.k = tf.placeholder(tf.int32)
 
-
             self.z_mu, self.z_logvar = self.encoder(self.X, self.enc_h_dim_list, self.z_dim)
             self.z = sample_z(self.z_mu, self.z_logvar)
-
+ 
+            
             self.recon_X_logit = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, False)
+            self.recon_X = tf.nn.sigmoid(self.recon_X_logit)
 
             self.logger.info([x.name for x in tf.global_variables()])
             #cost = tf.reduce_mean(tf.square(X-output))
@@ -42,10 +40,8 @@ class VAE(BaseModel):
             self.solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.total_loss)
 
             ### Recommendaiton metric ###
-            self.recon_X = self.recon_X_logit
         with tf.device('/cpu:0'):
             self.top_k_op = tf.nn.top_k(self.recon_X, self.k)
-
 
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
         _, total_loss_val, recon_loss_val, kl_loss_val = sess.run([self.solver, self.total_loss, self.recon_loss, self.kl_loss], feed_dict={self.X: batch_xs})
