@@ -10,17 +10,17 @@ class BaseModel():
         self.input_dim = input_dim
         self.z_dim = z_dim
 
-        self.keep_prob = 0.9
+        #self.keep_prob = 0.9
 
         self.w_init = tf.contrib.layers.variance_scaling_initializer()
 
-    def encoder(self, X, enc_h_dim_list, z_dim):
+    def encoder(self, X, enc_h_dim_list, z_dim, keep_prob):
         with tf.variable_scope('enc') as sceop:
             previous_layer = X
             for idx, enc_h_dim in enumerate(enc_h_dim_list):
                 #print(idx, enc_h_dim)
                 previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='h%d'%enc_h_dim)
-                previous_layer = tf.nn.dropout(previous_layer, self.keep_prob)
+                previous_layer = tf.nn.dropout(previous_layer, keep_prob)
 
 
             z_mu = tf.layers.dense(inputs=previous_layer, units=z_dim, activation=None, name='zmu%d'%z_dim)
@@ -29,7 +29,7 @@ class BaseModel():
  
             return z_mu, z_logvar 
           
-    def decoder(self, z, dec_h_dim_list, dec_dim, reuse_flag):
+    def decoder(self, z, dec_h_dim_list, dec_dim, keep_prob, reuse_flag):
         with tf.variable_scope('dec') as scope:
             if reuse_flag == True:
                 scope.reuse_variables()
@@ -38,7 +38,7 @@ class BaseModel():
             for idx, dec_h_dim in enumerate(dec_h_dim_list):
                 #print(idx, dec_h_dim)
                 previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='h%d'%dec_h_dim)
-                previous_layer = tf.nn.dropout(previous_layer, self.keep_prob)
+                previous_layer = tf.nn.dropout(previous_layer, keep_prob)
 
             dec_X = tf.layers.dense(inputs=previous_layer, units=dec_dim, activation=None, name='dec%d'%self.input_dim) 
 

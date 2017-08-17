@@ -53,7 +53,7 @@ def main(_):
 
                     #_, cost_val, summary = sess.run([solver, cost, merged], feed_dict={X: batch_xs})
                     #writer.add_summary(summary, global_step=epoch_idx*tranin_total_batch+batch_idx)
-                    cost_val = model.train(sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag)
+                    cost_val = model.train(sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
                     #_, cost_val = sess.run([solver, cost], feed_dict={X: batch_xs})
                     train_total_cost += cost_val
 
@@ -73,7 +73,7 @@ def main(_):
                     else:
                         log_flag = False
 
-                    cost_val = model.inference(sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag)
+                    cost_val = model.inference(sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag, 1.0)
                     valid_total_cost += cost_val
 
                 logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx, valid_total_cost / valid_batch_total))
@@ -97,7 +97,7 @@ def main(_):
                 if mnist_flag == True:
                     sample_size = 16
                     #samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
-                    _, samples = model.inference_with_recon(sess, data.test.images[:sample_size], 0, 0, 1, False)
+                    _, samples = model.inference_with_recon(sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
                     fig = drawer.plot(samples)
                     plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx).zfill(3)), bbox_inches='tight')
 
@@ -126,7 +126,7 @@ def main(_):
                 else:
                     log_flag = False
 
-                cost_val, top_k = model.inference_with_top_k(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag, FLAGS.k)
+                cost_val, top_k = model.inference_with_top_k(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag, 1.0, FLAGS.k)
                 test_total_cost += cost_val
 
                 values, indices = top_k 
@@ -153,9 +153,12 @@ if __name__ == '__main__':
 
     flags.DEFINE_integer("epoch", 100, "Epoch to train [50]")
     flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
+    flags.DEFINE_float("keep_prob", 0.9, "Dropout keep probability [0.9]")
+
     flags.DEFINE_integer("batch_size", 2048, "Batch size [100]")
     flags.DEFINE_integer("batch_logging_step", 10, "Batch size [100]")
     flags.DEFINE_integer("k", 5, "k for top k measure [5]")
+
 
     flags.DEFINE_integer("max_to_keep", "11", "maximum number of recent checkpoint files to keep [11]")
 
