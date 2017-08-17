@@ -7,8 +7,8 @@ from utils import kl_divergence_normal_distribution
 from base_model import BaseModel
 
 class VAE(BaseModel):
-    def __init__(self, logger, gpu_id, learning_rate, input_dim, z_dim, ae_h_dim_list):
-        super(VAE, self).__init__(logger, gpu_id, learning_rate, input_dim, z_dim)
+    def __init__(self, logger, gpu_id, learning_rate, loss_type, input_dim, z_dim, ae_h_dim_list):
+        super(VAE, self).__init__(logger, gpu_id, learning_rate, loss_type, input_dim, z_dim)
 
         self.enc_h_dim_list = ae_h_dim_list
         self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]

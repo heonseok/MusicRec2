@@ -154,6 +154,7 @@ if __name__ == '__main__':
     flags.DEFINE_integer("epoch", 100, "Epoch to train [50]")
     flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
     flags.DEFINE_float("keep_prob", 0.9, "Dropout keep probability [0.9]")
+    flags.DEFINE_string("loss_type", "CE", "Loss type for reconsturction [CE]")
 
     flags.DEFINE_integer("batch_size", 2048, "Batch size [100]")
     flags.DEFINE_integer("batch_logging_step", 10, "Batch size [100]")
@@ -216,10 +217,10 @@ if __name__ == '__main__':
 
     ### Build model ###
     if FLAGS.model == 'AE': 
-        model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, FLAGS.z_dim,  eval(FLAGS.ae_h_dim_list))
+        model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
     elif FLAGS.model == 'VAE':
-        model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
+        model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
     elif FLAGS.model == 'VAE_GAN':
-        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
 
     tf.app.run()

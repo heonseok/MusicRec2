@@ -1,7 +1,7 @@
 import tensorflow as tf 
 
 class BaseModel():
-    def __init__(self, logger, gpu_id, learning_rate, input_dim, z_dim):
+    def __init__(self, logger, gpu_id, learning_rate, loss_type, input_dim, z_dim):
         self.logger = logger
         self.gpu_id = gpu_id
 
@@ -14,7 +14,8 @@ class BaseModel():
 
         self.w_init = tf.contrib.layers.variance_scaling_initializer()
 
-        self.loss_type = 'CE'
+        self.loss_type = loss_type
+        #self.loss_type = 'CE'
 
         #self.recon_X_logit = None
         #self.recon_X = None
