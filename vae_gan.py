@@ -7,24 +7,6 @@ from utils import kl_divergence_normal_distribution
 from base_model import BaseModel
 
 class VAE_GAN(BaseModel):
-    """
-    def __init__(self, logger, gpu_id, learning_rate, input_dim, ae_h_dim_list, z_dim, dis_h_dim_list):
-        self.logger = logger
-        self.gpu_id = gpu_id
-
-        self.learning_rate = learning_rate 
-
-        self.input_dim = input_dim
-        self.z_dim = z_dim
-
-        self.enc_h_dim_list = ae_h_dim_list
-        self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
-        self.dis_h_dim_list = dis_h_dim_list
-
-        self.keep_prob = 0.9
-
-        self.build_model()
-    """
     def __init__(self, logger, gpu_id, learning_rate, input_dim, z_dim, ae_h_dim_list, dis_h_dim_list):
         super(VAE_GAN, self).__init__(logger, gpu_id, learning_rate, input_dim, z_dim)
 
@@ -41,66 +23,15 @@ class VAE_GAN(BaseModel):
             self.X = tf.placeholder(tf.float32, [None, self.input_dim])
             self.k = tf.placeholder(tf.int32)
 
-            """
-            with tf.variable_scope('encoder') as sceop:
-                previous_layer = self.X
-                for idx, enc_h_dim in enumerate(self.enc_h_dim_list):
-                    #print(idx, enc_h_dim)
-                    previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, name='Enc_h%d'%enc_h_dim)
-
-                self.z_mu = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_zmu%d'%self.z_dim)
-                self.z_logvar = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_zlogvar%d'%self.z_dim)
-     
-                self.z = sample_z(self.z_mu, self.z_logvar)
-            """
             self.z_mu, self.z_logvar = self.encoder(self.X, self.enc_h_dim_list, self.z_dim)
             self.z = sample_z(self.z_mu, self.z_logvar)
 
             self.recon_X = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, False)
             gen_X = self.decoder(tf.random_normal(tf.shape(self.z)), self.dec_h_dim_list, self.input_dim, True)
-            """
-            with tf.variable_scope('decoder') as scope:
-                previous_layer = self.z
-                for idx, dec_h_dim in enumerate(self.dec_h_dim_list):
-                    #print(idx, dec_h_dim)
-                    previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='Dec_h%d'%dec_h_dim)
-
-                recon_X = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
-            
-                scope.reuse_variables()
-            
-                previous_layer = tf.random_normal(tf.shape(self.z))
-                for idx, dec_h_dim in enumerate(self.dec_h_dim_list):
-                    #print(idx, dec_h_dim)
-                    previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='Dec_h%d'%dec_h_dim)
-
-                gen_X = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
-
-            """
 
             dis_logit_real, dis_prob_real = self.discriminator(self.recon_X, self.dis_h_dim_list, 1, False)
             dis_logit_fake, dis_prob_fake = self.discriminator(gen_X, self.dis_h_dim_list, 1, True)
 
-            """
-            with tf.variable_scope('discriminator') as scope:
-                previous_layer = recon_X 
-                for idx, dis_h_dim in enumerate(self.dis_h_dim_list):
-                    #print(idx, dec_h_dim)
-                    previous_layer = tf.layers.dense(inputs=previous_layer, units=dis_h_dim, activation=tf.nn.relu, name='Dis_h%d'%dis_h_dim)
-
-                dis_logit_real = tf.layers.dense(inputs=previous_layer, units=1, activation=None, name='Dis_o1') #, kernel_initializer=tf.contrib.layers.xavier_initializer)
-                dis_prob_real = tf.nn.sigmoid(dis_logit_real)
-            
-                scope.reuse_variables()
-            
-                previous_layer = gen_X 
-                for idx, dis_h_dim in enumerate(self.dis_h_dim_list):
-                    #print(idx, dec_h_dim)
-                    previous_layer = tf.layers.dense(inputs=previous_layer, units=dis_h_dim, activation=tf.nn.relu, name='Dis_h%d'%dis_h_dim)
-
-                dis_logit_fake = tf.layers.dense(inputs=previous_layer, units=1, activation=None, name='Dis_o1') #, kernel_initializer=tf.contrib.layers.xavier_initializer)
-                dis_prob_fake = tf.nn.sigmoid(dis_logit_fake)
-            """
 
             self.logger.info([x.name for x in tf.global_variables()])
             print([x.name for x in tf.global_variables() if 'enc' in x.name])
@@ -134,33 +65,6 @@ class VAE_GAN(BaseModel):
             ### Recommendaiton metric ###
         with tf.device('/cpu:0'):
             self.top_k_op = tf.nn.top_k(self.recon_X, self.k)
-    """
-    def encoder(self, X, enc_h_dim_list, z_dim):
-        with tf.variable_scope('enc') as sceop:
-            previous_layer = X
-            for idx, enc_h_dim in enumerate(enc_h_dim_list):
-                #print(idx, enc_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, name='h%d'%enc_h_dim)
-
-            z_mu = tf.layers.dense(inputs=previous_layer, units=z_dim, activation=None, name='zmu%d'%z_dim)
-            z_logvar = tf.layers.dense(inputs=previous_layer, units=z_dim, activation=None, name='zlogvar%d'%z_dim)
- 
-            return z_mu, z_logvar 
-          
-    def decoder(self, z, dec_h_dim_list, dec_dim, reuse_flag):
-        with tf.variable_scope('dec') as scope:
-            if reuse_flag == True:
-                scope.reuse_variables()
-
-            previous_layer = z
-            for idx, dec_h_dim in enumerate(dec_h_dim_list):
-                #print(idx, dec_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='h%d'%dec_h_dim)
-
-            dec_X = tf.layers.dense(inputs=previous_layer, units=dec_dim, activation=tf.nn.tanh, name='dec%d'%self.input_dim) 
-
-            return dec_X
-    """
         
     def discriminator(self, X, dis_h_dim_list, dis_dim, reuse_flag):
         with tf.variable_scope('dis') as scope:
