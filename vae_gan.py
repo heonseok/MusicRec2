@@ -4,8 +4,10 @@ import os
 import logging
 from utils import sample_z
 from utils import kl_divergence_normal_distribution
+from base_model import BaseModel
 
-class VAE_GAN():
+class VAE_GAN(BaseModel):
+    """
     def __init__(self, logger, gpu_id, learning_rate, input_dim, ae_h_dim_list, z_dim, dis_h_dim_list):
         self.logger = logger
         self.gpu_id = gpu_id
@@ -18,6 +20,19 @@ class VAE_GAN():
         self.enc_h_dim_list = ae_h_dim_list
         self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
         self.dis_h_dim_list = dis_h_dim_list
+
+        self.keep_prob = 0.9
+
+        self.build_model()
+    """
+    def __init__(self, logger, gpu_id, learning_rate, input_dim, z_dim, ae_h_dim_list, dis_h_dim_list):
+        super(VAE_GAN, self).__init__(logger, gpu_id, learning_rate, input_dim, z_dim)
+
+        self.enc_h_dim_list = ae_h_dim_list
+        self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
+        self.dis_h_dim_list = dis_h_dim_list
+
+        self.keep_prob = 0.9
 
         self.build_model()
 
@@ -41,7 +56,7 @@ class VAE_GAN():
             self.z_mu, self.z_logvar = self.encoder(self.X, self.enc_h_dim_list, self.z_dim)
             self.z = sample_z(self.z_mu, self.z_logvar)
 
-            recon_X = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, False)
+            self.recon_X = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, False)
             gen_X = self.decoder(tf.random_normal(tf.shape(self.z)), self.dec_h_dim_list, self.input_dim, True)
             """
             with tf.variable_scope('decoder') as scope:
@@ -63,7 +78,7 @@ class VAE_GAN():
 
             """
 
-            dis_logit_real, dis_prob_real = self.discriminator(recon_X, self.dis_h_dim_list, 1, False)
+            dis_logit_real, dis_prob_real = self.discriminator(self.recon_X, self.dis_h_dim_list, 1, False)
             dis_logit_fake, dis_prob_fake = self.discriminator(gen_X, self.dis_h_dim_list, 1, True)
 
             """
@@ -97,7 +112,7 @@ class VAE_GAN():
             dis_theta = ([x for x in tf.global_variables() if 'dis' in x.name])
 
             #cost = tf.reduce_mean(tf.square(X-output))
-            self.recon_loss = tf.losses.mean_squared_error(self.X, recon_X)
+            self.recon_loss = tf.losses.mean_squared_error(self.X, self.recon_X)
             self.kl_loss = kl_divergence_normal_distribution(self.z_mu, self.z_logvar)
             
             self.dec_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logit_fake, labels=tf.ones_like(dis_logit_fake)))
@@ -118,8 +133,8 @@ class VAE_GAN():
 
             ### Recommendaiton metric ###
         with tf.device('/cpu:0'):
-            self.top_k_op = tf.nn.top_k(recon_X, self.k)
-
+            self.top_k_op = tf.nn.top_k(self.recon_X, self.k)
+    """
     def encoder(self, X, enc_h_dim_list, z_dim):
         with tf.variable_scope('enc') as sceop:
             previous_layer = X
@@ -145,6 +160,7 @@ class VAE_GAN():
             dec_X = tf.layers.dense(inputs=previous_layer, units=dec_dim, activation=tf.nn.tanh, name='dec%d'%self.input_dim) 
 
             return dec_X
+    """
         
     def discriminator(self, X, dis_h_dim_list, dis_dim, reuse_flag):
         with tf.variable_scope('dis') as scope:
@@ -187,3 +203,11 @@ class VAE_GAN():
         if log_flag == True:
             self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Enc loss : %.4E, Dec loss : %.4E, Dec loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, enc_loss_val, dec_loss_val, dis_loss_val, total_loss_val))
         return total_loss_val, top_k
+
+    def inference_with_recon(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
+        enc_loss_val, dec_loss_val, dis_loss_val, recon_val = sess.run([self.enc_loss, self.dec_loss, self.dis_loss, self.recon_X], feed_dict={self.X: batch_xs})
+        total_loss_val = dis_loss_val + dec_loss_val + enc_loss_val
+
+        if log_flag == True:
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Enc loss : %.4E, Dec loss : %.4E, Dec loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, enc_loss_val, dec_loss_val, dis_loss_val, total_loss_val))
+        return total_loss_val, recon_val

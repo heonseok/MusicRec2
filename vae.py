@@ -4,20 +4,19 @@ import os
 import logging
 from utils import sample_z
 from utils import kl_divergence_normal_distribution
+from base_model import BaseModel
 
-class VAE():
-    def __init__(self, logger, gpu_id, learning_rate, input_dim, ae_h_dim_list, z_dim):
-        self.logger = logger
-        self.gpu_id = gpu_id
-
-        self.learning_rate = learning_rate 
-
-        self.input_dim = input_dim
-        self.z_dim = z_dim
+class VAE(BaseModel):
+    def __init__(self, logger, gpu_id, learning_rate, input_dim, z_dim, ae_h_dim_list):
+        super(VAE, self).__init__(logger, gpu_id, learning_rate, input_dim, z_dim)
 
         self.enc_h_dim_list = [*ae_h_dim_list]
         #self.enc_h_dim_list = [*ae_h_dim_list, z_dim]
         self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
+
+        self.keep_prob = 0.9
+        self.w_init = tf.contrib.layers.variance_scaling_initializer()
+        #self.w_init = None 
 
         self.build_model()
 
@@ -26,33 +25,94 @@ class VAE():
             self.X = tf.placeholder(tf.float32, [None, self.input_dim])
             self.k = tf.placeholder(tf.int32)
 
+            """
             previous_layer = self.X
             for idx, enc_h_dim in enumerate(self.enc_h_dim_list):
                 #print(idx, enc_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, name='Enc_h%d'%enc_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='Enc_h%d'%enc_h_dim)
+                previous_layer = tf.nn.dropout(previous_layer, self.keep_prob)
+            """
 
+            self.z_mu, self.z_logvar = self.encoder(self.X, self.enc_h_dim_list, self.z_dim)
+            self.z = sample_z(self.z_mu, self.z_logvar)
+
+            self.recon_X_logit = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, False)
+
+            """
+            wo = tf.get_variable('wo', [previous_layer.get_shape()[1], self.z_dim * 2], initializer=self.w_init)
+            bo = tf.get_variable('bo', [self.z_dim * 2], initializer=tf.constant_initializer(.0))
+            gaussian_params = tf.matmul(previous_layer, wo) + bo
+
+            # The mean parameter is unconstrained
+            self.z_mu = gaussian_params[:, :self.z_dim]
+            # The standard deviation must be positive. Parametrize with a softplus and
+            # add a small epsilon for numerical stability
+            self.z_logvar = 1e-6 + tf.nn.softplus(gaussian_params[:, self.z_dim:])*2
+
+            self.z = self.z_mu + (self.z_logvar/2) * tf.random_normal(tf.shape(self.z_mu), 0, 1, dtype=tf.float32)
+
+            """
+            """
             self.z_mu = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_zmu%d'%self.z_dim)
-            self.z_logvar = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_zlogvar%d'%self.z_dim)
+            #self.z_logvar = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=None, name='Enc_zlogvar%d'%self.z_dim)
+            self.z_logvar = tf.layers.dense(inputs=previous_layer, units=self.z_dim, activation=tf.nn.softplus, name='Enc_zlogvar%d'%self.z_dim)
  
             self.z = sample_z(self.z_mu, self.z_logvar)
 
             previous_layer = self.z
             for idx, dec_h_dim in enumerate(self.dec_h_dim_list):
                 #print(idx, dec_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='Dec_h%d'%dec_h_dim)
-
-            recon_X = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=tf.nn.tanh, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='Dec_h%d'%dec_h_dim)
+                previous_layer = tf.nn.dropout(previous_layer, self.keep_prob)
+            """
+            """
+            self.recon_X_logit = tf.layers.dense(inputs=previous_layer, units=self.input_dim, activation=None, name='Dec_r%d'%self.input_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            self.recon_X = tf.nn.tanh(self.recon_X_logit)
+            self.recon_X_prob = tf.nn.sigmoid(self.recon_X_logit)
+            self.recon_X_prob = tf.clip_by_value(self.recon_X_prob, 1e-8, 1-1e-8)
+            """
             self.logger.info([x.name for x in tf.global_variables()])
             #cost = tf.reduce_mean(tf.square(X-output))
-            self.recon_loss = tf.losses.mean_squared_error(self.X, recon_X)
+
+            #self.recon_loss = tf.losses.mean_squared_error(self.X, self.recon_X_prob)
+            self.recon_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.recon_X_logit, labels=self.X))
             self.kl_loss = kl_divergence_normal_distribution(self.z_mu, self.z_logvar)
             #cost_summary = tf.summary.scalar('cost', cost)
             self.total_loss = self.recon_loss + self.kl_loss
             self.solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.total_loss)
 
             ### Recommendaiton metric ###
+            self.recon_X = self.recon_X_logit
         with tf.device('/cpu:0'):
-            self.top_k_op = tf.nn.top_k(recon_X, self.k)
+            self.top_k_op = tf.nn.top_k(self.recon_X, self.k)
+
+    """
+    def encoder(self, X, enc_h_dim_list, z_dim):
+        with tf.variable_scope('enc') as sceop:
+            previous_layer = X
+            for idx, enc_h_dim in enumerate(enc_h_dim_list):
+                #print(idx, enc_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, name='h%d'%enc_h_dim)
+
+            z_mu = tf.layers.dense(inputs=previous_layer, units=z_dim, activation=None, name='zmu%d'%z_dim)
+            z_logvar = tf.layers.dense(inputs=previous_layer, units=z_dim, activation=None, name='zlogvar%d'%z_dim)
+ 
+            return z_mu, z_logvar 
+          
+    def decoder(self, z, dec_h_dim_list, dec_dim, reuse_flag):
+        with tf.variable_scope('dec') as scope:
+            if reuse_flag == True:
+                scope.reuse_variables()
+
+            previous_layer = z
+            for idx, dec_h_dim in enumerate(dec_h_dim_list):
+                #print(idx, dec_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, name='h%d'%dec_h_dim)
+
+            dec_X = tf.layers.dense(inputs=previous_layer, units=dec_dim, activation=None, name='dec%d'%self.input_dim) 
+
+            return dec_X
+    """
 
     def train(self, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag):
         _, total_loss_val, recon_loss_val, kl_loss_val = sess.run([self.solver, self.total_loss, self.recon_loss, self.kl_loss], feed_dict={self.X: batch_xs})
@@ -74,3 +134,9 @@ class VAE():
         if log_flag == True:
             self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Recon loss : %.4E, KL loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, recon_loss_val, kl_loss_val, total_loss_val))
         return total_loss_val, top_k
+
+    def inference_with_recon(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
+        total_loss_val, recon_loss_val, kl_loss_val, recon_val = sess.run([self.total_loss, self.recon_loss, self.kl_loss, self.recon_X], feed_dict={self.X: batch_xs})
+        if log_flag == True:
+            self.logger.debug('Epoch %.3i, Batch[%.3i/%i], Recon loss : %.4E, KL loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, recon_loss_val, kl_loss_val, total_loss_val))
+        return total_loss_val, recon_val 

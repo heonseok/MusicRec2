@@ -96,7 +96,8 @@ def main(_):
 
                 if mnist_flag == True:
                     sample_size = 16
-                    samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
+                    #samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
+                    _, samples = model.inference_with_recon(sess, data.test.images[:sample_size], 0, 0, 1, False)
                     fig = drawer.plot(samples)
                     plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx).zfill(3)), bbox_inches='tight')
 
@@ -212,10 +213,10 @@ if __name__ == '__main__':
 
     ### Build model ###
     if FLAGS.model == 'AE': 
-        model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
+        model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, FLAGS.z_dim,  eval(FLAGS.ae_h_dim_list))
     elif FLAGS.model == 'VAE':
-        model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim)
+        model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
     elif FLAGS.model == 'VAE_GAN':
-        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, eval(FLAGS.ae_h_dim_list), FLAGS.z_dim, eval(FLAGS.dis_h_dim_list))
+        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
 
     tf.app.run()
