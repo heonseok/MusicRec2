@@ -18,8 +18,9 @@ class GAN_VANILLA(BaseModel):
             self.z = tf.placeholder(tf.float32, [None, self.z_dim])
             self.keep_prob = tf.placeholder(tf.float32)
 
-            self.gen_X = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, self.keep_prob, False)
-            self.gen_X = tf.nn.sigmoid(self.gen_X)
+            self.gen_X_logit = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, self.keep_prob, False)
+            self.gen_X = tf.nn.sigmoid(self.gen_X_logit)
+            self.gen_X_display = tf.nn.tanh(self.gen_X_logit)
 
             dis_logit_real, _ = self.discriminator(self.X, self.dis_h_dim_list, 1, self.keep_prob, False)
             dis_logit_fake, _ = self.discriminator(self.gen_X, self.dis_h_dim_list, 1, self.keep_prob, True)
@@ -38,12 +39,15 @@ class GAN_VANILLA(BaseModel):
             #dec_theta = ([x for x in tf.global_variables() if 'dec' in x.name])
             #dis_theta = ([x for x in tf.global_variables() if 'dis' in x.name])
 
-            self.dec_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dec_loss, var_list=dec_theta)
-            self.dis_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
+            self.dec_solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.dec_loss, var_list=dec_theta)
+            self.dis_solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
 
+            #self.dec_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dec_loss, var_list=dec_theta)
+            #self.dis_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
 
     def train(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
+         for i in range(5):
+             _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
          _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
 
          total_loss_val = dis_loss_val + dec_loss_val
@@ -59,7 +63,7 @@ class GAN_VANILLA(BaseModel):
     def inference_with_recon(self, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
          dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
          dec_loss_val = sess.run(self.dec_loss, feed_dict={self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
-         gen_val = sess.run(self.gen_X, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[16, self.z_dim])})
+         gen_val = sess.run(self.gen_X_display, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[16, self.z_dim])})
          total_loss_val = dis_loss_val + dec_loss_val
 
          return total_loss_val, gen_val
