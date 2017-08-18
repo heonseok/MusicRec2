@@ -6,7 +6,7 @@ from ae import AE
 from vae import VAE
 from vae_gan import VAE_GAN
 from gan_fm import GAN
-from gan_vanilla import GAN_VANILLA
+from vanilla_gan import VANILLA_GAN
 from info_gan import INFO_GAN
 from vae_vanilla_gan import VAE_VANILLA_GAN
 
@@ -235,12 +235,12 @@ if __name__ == '__main__':
         model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
     elif FLAGS.model == 'VAE':
         model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
-    elif FLAGS.model == 'VAE_GAN':
-        model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
-    elif FLAGS.model == 'GAN':
-        model = GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
-    elif FLAGS.model == 'GAN_VANILLA':
-        model = GAN_VANILLA(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    #elif FLAGS.model == 'VAE_GAN':
+        #model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    #elif FLAGS.model == 'GAN':
+        #model = GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'VANILLA_GAN':
+        model = VANILLA_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
     elif FLAGS.model == 'INFO_GAN':
         model = INFO_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
     elif FLAGS.model == 'VAE_VANILLA_GAN':

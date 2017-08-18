@@ -2,9 +2,9 @@ import tensorflow as tf
 import numpy as np
 from base_model import BaseModel
 
-class GAN_VANILLA(BaseModel):
+class VANILLA_GAN(BaseModel):
     def __init__(self, logger, gpu_id, learning_rate, loss_type, input_dim, z_dim, ae_h_dim_list, dis_h_dim_list):
-        super(GAN_VANILLA, self).__init__(logger, gpu_id, learning_rate, loss_type, input_dim, z_dim) 
+        super(VANILLA_GAN, self).__init__(logger, gpu_id, learning_rate, loss_type, input_dim, z_dim) 
 
         self.dec_h_dim_list = [*list(reversed(ae_h_dim_list))]
         self.dis_h_dim_list = dis_h_dim_list
