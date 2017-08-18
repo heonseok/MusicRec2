@@ -5,7 +5,10 @@ import logging
 from ae import AE
 from vae import VAE
 from vae_gan import VAE_GAN
-
+from gan_fm import GAN
+from gan_vanilla import GAN_VANILLA
+from info_gan import INFO_GAN
+from vae_vanilla_gan import VAE_VANILLA_GAN
 
 def main(_):
     logger.info("Running AE")
@@ -41,19 +44,23 @@ def main(_):
                 
                 ##### TRAIN #####
                 for batch_idx in range(train_batch_total):
-                    if mnist_flag == True:
-                        batch_xs, batch_ys = data.train.next_batch(FLAGS.batch_size)
-                    elif mnist_flag == False:
-                        batch_xs = data.train.next_batch(FLAGS.batch_size)
-
                     if ((batch_idx+1) % FLAGS.batch_logging_step == 0):
                         log_flag = True
                     else:
                         log_flag = False
 
+                    if mnist_flag == True:
+                        batch_xs, batch_ys = data.train.next_batch(FLAGS.batch_size)
+                    elif mnist_flag == False:
+                        batch_xs = data.train.next_batch(FLAGS.batch_size)
+                    
+                    if FLAGS.model == 'INFO_GAN':
+                        cost_val = model.train_with_label(sess, batch_xs, batch_ys, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
+                    else:
+                        cost_val = model.train(sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
+
                     #_, cost_val, summary = sess.run([solver, cost, merged], feed_dict={X: batch_xs})
                     #writer.add_summary(summary, global_step=epoch_idx*tranin_total_batch+batch_idx)
-                    cost_val = model.train(sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
                     #_, cost_val = sess.run([solver, cost], feed_dict={X: batch_xs})
                     train_total_cost += cost_val
 
@@ -73,7 +80,10 @@ def main(_):
                     else:
                         log_flag = False
 
-                    cost_val = model.inference(sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag, 1.0)
+                    if FLAGS.model == 'INFO_GAN':
+                        cost_val = model.inference_with_label(sess, batch_xs, batch_ys, epoch_idx, batch_idx, valid_batch_total, log_flag, FLAGS.keep_prob)
+                    else:
+                        cost_val = model.inference(sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag, 1.0)
                     valid_total_cost += cost_val
 
                 logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx, valid_total_cost / valid_batch_total))
@@ -91,13 +101,16 @@ def main(_):
                 else:
                     valid_non_improve_count += 1
                     logger.info("Valid cost has not been improved for %d epochs" % valid_non_improve_count)
-                    if valid_non_improve_count == 10:
+                    if valid_non_improve_count == 10 and FLAGS.early_stop == True:
                         break
 
                 if mnist_flag == True:
                     sample_size = 16
                     #samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
-                    _, samples = model.inference_with_recon(sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
+                    if FLAGS.model == 'INFO_GAN':
+                        _, samples = model.inference_with_recon_with_label(sess, data.test.images[:sample_size], data.test.labels[:sample_size], 0, 0, 1, False, 1.0)
+                    else:
+                        _, samples = model.inference_with_recon(sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
                     fig = drawer.plot(samples)
                     plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx).zfill(3)), bbox_inches='tight')
 
@@ -137,6 +150,7 @@ def main(_):
             logger.info("Top %d accuracy : %.4E" % (FLAGS.k, top_k_accuracy/(FLAGS.batch_size*test_batch_total)))
 
 if __name__ == '__main__':
+    ### SET ARGUMENTS ###
     flags = tf.app.flags
 
     flags.DEFINE_string("model", "AE", "[RBM, AE, VAE, VAE_GAN, VAE_EBGAN]")
@@ -161,6 +175,7 @@ if __name__ == '__main__':
     flags.DEFINE_integer("k", 5, "k for top k measure [5]")
 
 
+    flags.DEFINE_boolean("early_stop", True, "Early stop based on validation")
     flags.DEFINE_integer("max_to_keep", "11", "maximum number of recent checkpoint files to keep [11]")
 
     FLAGS = flags.FLAGS
@@ -222,5 +237,14 @@ if __name__ == '__main__':
         model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
     elif FLAGS.model == 'VAE_GAN':
         model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'GAN':
+        model = GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'GAN_VANILLA':
+        model = GAN_VANILLA(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'INFO_GAN':
+        model = INFO_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'VAE_VANILLA_GAN':
+        model = VAE_VANILLA_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+
 
     tf.app.run()

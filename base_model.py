@@ -1,5 +1,8 @@
 import tensorflow as tf 
 
+def lrelu(x, leak=0.2):
+    return tf.maximum(x, leak*x)
+
 class BaseModel():
     def __init__(self, logger, gpu_id, learning_rate, loss_type, input_dim, z_dim):
         self.logger = logger
@@ -25,7 +28,9 @@ class BaseModel():
             previous_layer = X
             for idx, enc_h_dim in enumerate(enc_h_dim_list):
                 #print(idx, enc_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='h%d'%enc_h_dim)
+                #previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='h%d'%enc_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=enc_h_dim, activation=None, kernel_initializer=self.w_init, name='h%d'%enc_h_dim)
+                previous_layer = lrelu(previous_layer)
                 previous_layer = tf.nn.dropout(previous_layer, keep_prob)
 
 
@@ -43,12 +48,50 @@ class BaseModel():
             previous_layer = z
             for idx, dec_h_dim in enumerate(dec_h_dim_list):
                 #print(idx, dec_h_dim)
-                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='h%d'%dec_h_dim)
+                #previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=tf.nn.relu, kernel_initializer=self.w_init, name='h%d'%dec_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dec_h_dim, activation=None, kernel_initializer=self.w_init, name='h%d'%dec_h_dim)
+                previous_layer = lrelu(previous_layer)
                 previous_layer = tf.nn.dropout(previous_layer, keep_prob)
 
             dec_X = tf.layers.dense(inputs=previous_layer, units=dec_dim, activation=None, name='dec%d'%self.input_dim) 
 
             return dec_X
+
+    def discriminator(self, X, dis_h_dim_list, dis_dim, keep_prob, reuse_flag):
+        with tf.variable_scope('dis') as scope:
+            if reuse_flag == True:
+                scope.reuse_variables()
+
+            previous_layer = X 
+            for idx, dis_h_dim in enumerate(dis_h_dim_list):
+                #print(idx, dec_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dis_h_dim, activation=None, kernel_initializer=self.w_init, name='h%d'%dis_h_dim)
+                previous_layer = lrelu(previous_layer)
+                previous_layer = tf.nn.dropout(previous_layer, keep_prob)
+
+            dis_logit = tf.layers.dense(inputs=previous_layer, units=dis_dim, activation=None, name='dis%d'%dis_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            dis_prob = tf.nn.sigmoid(dis_logit)
+
+            return dis_logit, dis_prob
+
+    def discriminator_with_intermediate_layer(self, X, dis_h_dim_list, dis_dim, keep_prob, reuse_flag):
+        with tf.variable_scope('dis') as scope:
+            if reuse_flag == True:
+                scope.reuse_variables()
+
+            previous_layer = X 
+            for idx, dis_h_dim in enumerate(dis_h_dim_list):
+                #print(idx, dec_h_dim)
+                previous_layer = tf.layers.dense(inputs=previous_layer, units=dis_h_dim, activation=None, kernel_initializer=self.w_init, name='h%d'%dis_h_dim)
+                if idx == len(dis_h_dim_list)-1:
+                    intermediate_layer = previous_layer
+                previous_layer = lrelu(previous_layer)
+                previous_layer = tf.nn.dropout(previous_layer, keep_prob)
+
+            dis_logit = tf.layers.dense(inputs=previous_layer, units=dis_dim, activation=None, name='dis%d'%dis_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            dis_prob = tf.nn.sigmoid(dis_logit)
+
+            return dis_logit, dis_prob, intermediate_layer
 
     def recon_loss(self):
         if self.loss_type == 'CE':
