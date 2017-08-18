@@ -218,7 +218,7 @@ if __name__ == '__main__':
 
     ##### VAE_GAN #####
     elif FLAGS.model == 'VAE_VANILLA_GAN':
-        model = VAE_VANILLA_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+        model = VAE_VANILLA_GAN(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
         model_spec += '_dis' + dis_h_dim_list_replaced
 
 
