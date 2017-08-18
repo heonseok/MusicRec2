@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from base_model import BaseModel
+from utils import get_random_normal 
 
 class VANILLA_GAN(BaseModel):
     def __init__(self, gpu_id, learning_rate, loss_type, input_dim, z_dim, ae_h_dim_list, dis_h_dim_list):
@@ -46,24 +47,30 @@ class VANILLA_GAN(BaseModel):
             #self.dis_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
 
     def train(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
+         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+
          for i in range(5):
-             _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
-         _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
+             _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
+         _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.keep_prob: keep_prob, self.z: random_z})
 
          total_loss_val = dis_loss_val + dec_loss_val
          return total_loss_val
 
     def inference(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
+         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+
+         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
+         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.keep_prob: keep_prob, self.z: random_z})
 
          total_loss_val = dis_loss_val + dec_loss_val
          return total_loss_val
 
     def inference_with_recon(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
-         gen_val = sess.run(self.gen_X_display, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[16, self.z_dim])})
+         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+
+         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
+         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.keep_prob: keep_prob, self.z: random_z})
+         gen_val = sess.run(self.gen_X_display, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
          total_loss_val = dis_loss_val + dec_loss_val
 
          return total_loss_val, gen_val
