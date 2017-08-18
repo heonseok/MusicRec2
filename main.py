@@ -106,9 +106,9 @@ def main(_):
                 if mnist_flag == True:
                     sample_size = 16
                     if FLAGS.model == 'INFO_GAN':
-                        _, samples = model.inference_with_recon_using_info(logger, sess, data.test.images[:sample_size], data.test.labels[:sample_size], 0, 0, 1, False, 1.0)
+                        _, samples = model.inference_with_output_using_info(logger, sess, data.test.images[:sample_size], data.test.labels[:sample_size], 0, 0, 1, False, 1.0)
                     else:
-                        _, samples = model.inference_with_recon(logger, sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
+                        _, samples = model.inference_with_output(logger, sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
                     fig = drawer.plot(samples)
                     plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx).zfill(3)), bbox_inches='tight')
 

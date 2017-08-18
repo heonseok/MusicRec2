@@ -76,7 +76,7 @@ class AE():
             logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))
         return loss_val, top_k
 
-    def inference_with_recon(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
+    def inference_with_output(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag):
         loss_val, recon_val = sess.run([self.total_loss, self.recon_X], feed_dict={self.X: batch_xs})
         if log_flag == True:
             logger.debug('Epoch %.3i, Batch[%.3i/%i], Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, loss_val))

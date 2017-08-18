@@ -66,7 +66,7 @@ class VAE(BaseModel):
             logger.debug('Epoch %.3i, Batch[%.3i/%i], Recon loss : %.4E, KL loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, recon_loss_val, kl_loss_val, total_loss_val))
         return total_loss_val, top_k
 
-    def inference_with_recon(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
+    def inference_with_output(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
         total_loss_val, recon_loss_val, kl_loss_val, recon_val = sess.run([self.total_loss, self.recon_loss, self.kl_loss, self.recon_X], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob})
         if log_flag == True:
             logger.debug('Epoch %.3i, Batch[%.3i/%i], Recon loss : %.4E, KL loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, recon_loss_val, kl_loss_val, total_loss_val))

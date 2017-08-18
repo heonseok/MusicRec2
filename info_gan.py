@@ -63,7 +63,7 @@ class INFO_GAN(BaseModel):
          total_loss_val = dis_loss_val + dec_loss_val
          return total_loss_val
 
-    def inference_with_recon_using_info(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
+    def inference_with_output_using_info(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
          random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
 
          dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: random_z})
