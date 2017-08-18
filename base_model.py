@@ -4,8 +4,7 @@ def lrelu(x, leak=0.2):
     return tf.maximum(x, leak*x)
 
 class BaseModel():
-    def __init__(self, logger, gpu_id, learning_rate, loss_type, input_dim, z_dim):
-        self.logger = logger
+    def __init__(self, gpu_id, learning_rate, loss_type, input_dim, z_dim):
         self.gpu_id = gpu_id
 
         self.learning_rate = learning_rate 

@@ -55,9 +55,9 @@ def main(_):
                         batch_xs = data.train.next_batch(FLAGS.batch_size)
                     
                     if FLAGS.model == 'INFO_GAN':
-                        cost_val = model.train_with_label(sess, batch_xs, batch_ys, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
+                        cost_val = model.train_with_label(logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
                     else:
-                        cost_val = model.train(sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
+                        cost_val = model.train(logger, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
 
                     #_, cost_val, summary = sess.run([solver, cost, merged], feed_dict={X: batch_xs})
                     #writer.add_summary(summary, global_step=epoch_idx*tranin_total_batch+batch_idx)
@@ -81,9 +81,9 @@ def main(_):
                         log_flag = False
 
                     if FLAGS.model == 'INFO_GAN':
-                        cost_val = model.inference_with_label(sess, batch_xs, batch_ys, epoch_idx, batch_idx, valid_batch_total, log_flag, FLAGS.keep_prob)
+                        cost_val = model.inference_with_label(logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, valid_batch_total, log_flag, FLAGS.keep_prob)
                     else:
-                        cost_val = model.inference(sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag, 1.0)
+                        cost_val = model.inference(logger, sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag, 1.0)
                     valid_total_cost += cost_val
 
                 logger.debug('Epoch %.3i, Valid loss: %.4E' % (epoch_idx, valid_total_cost / valid_batch_total))
@@ -108,9 +108,9 @@ def main(_):
                     sample_size = 16
                     #samples = sess.run(output, feed_dict={X: data.test.images[:sample_size]})
                     if FLAGS.model == 'INFO_GAN':
-                        _, samples = model.inference_with_recon_with_label(sess, data.test.images[:sample_size], data.test.labels[:sample_size], 0, 0, 1, False, 1.0)
+                        _, samples = model.inference_with_recon_with_label(logger, sess, data.test.images[:sample_size], data.test.labels[:sample_size], 0, 0, 1, False, 1.0)
                     else:
-                        _, samples = model.inference_with_recon(sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
+                        _, samples = model.inference_with_recon(logger, sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
                     fig = drawer.plot(samples)
                     plt.savefig(image_dir + '/{}.png'.format(str(epoch_idx).zfill(3)), bbox_inches='tight')
 
@@ -139,7 +139,7 @@ def main(_):
                 else:
                     log_flag = False
 
-                cost_val, top_k = model.inference_with_top_k(sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag, 1.0, FLAGS.k)
+                cost_val, top_k = model.inference_with_top_k(logger, sess, batch_xs, best_model_idx, batch_idx, test_batch_total, log_flag, 1.0, FLAGS.k)
                 test_total_cost += cost_val
 
                 values, indices = top_k 
@@ -180,19 +180,12 @@ if __name__ == '__main__':
 
     FLAGS = flags.FLAGS
 
-    # ckpt path should not contain '[' or ']'
-    ae_h_dim_list_replaced = FLAGS.ae_h_dim_list.replace('[','').replace(']','').replace(',','-') 
-    model_spec = 'm' + FLAGS.model + '_lr' + str(FLAGS.learning_rate) + '_b' + str(FLAGS.batch_size) + '_h' + ae_h_dim_list_replaced + '_z' + str(FLAGS.z_dim)
-        
-
+    ########## DATA ##########
     if FLAGS.dataset == "MNIST":
         mnist_flag = True
         import matplotlib.pyplot as plt
         from utils import Drawer
         drawer = Drawer()
-        image_dir = os.path.join("MNIST/images_visualized", model_spec)
-        if not os.path.exists(image_dir):
-            os.makedirs(image_dir)
 
         from tensorflow.examples.tutorials.mnist import input_data
         data = input_data.read_data_sets("MNIST/data/", one_hot=True)
@@ -204,18 +197,37 @@ if __name__ == '__main__':
         data = data_loader.load_music_data()
         input_dim = data.train.dimension
 
+    ########## Build model ##########
+    # ckpt path should not contain '[' or ']'
+    ae_h_dim_list_replaced = FLAGS.ae_h_dim_list.replace('[','').replace(']','').replace(',','-') 
+    dis_h_dim_list_replaced = FLAGS.dis_h_dim_list.replace('[','').replace(']','').replace(',','-') 
+    model_spec = 'm' + FLAGS.model + '_lr' + str(FLAGS.learning_rate) + '_b' + str(FLAGS.batch_size) + '_ae' + ae_h_dim_list_replaced + '_z' + str(FLAGS.z_dim)
+
+    ### AE ### 
+    if FLAGS.model == 'AE': 
+        model = AE(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
+    elif FLAGS.model == 'VAE':
+        model = VAE(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
+
+    ### GAN ###
+    elif FLAGS.model == 'VANILLA_GAN':
+        model = VANILLA_GAN(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+        model_spec += '_dis' + dis_h_dim_list_replaced
+    elif FLAGS.model == 'INFO_GAN':
+        model = INFO_GAN(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+        model_spec += '_dis' + dis_h_dim_list_replaced
+
+    ### VAE_GAN ###
+    elif FLAGS.model == 'VAE_VANILLA_GAN':
+        model = VAE_VANILLA_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+        model_spec += '_dis' + dis_h_dim_list_replaced
+
+
+    ########## Make dir ##########
+    ### log ###
     log_dir = os.path.join(*[FLAGS.dataset, "log", model_spec])
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-
-    ckpt_dir = os.path.join(*[FLAGS.dataset, "ckpt", model_spec])
-    if not os.path.exists(ckpt_dir):
-        os.makedirs(ckpt_dir)
-    ckpt_path = os.path.join(ckpt_dir, "model_ckpt")
-
-    tensorboard_dir = os.path.join(*[FLAGS.dataset, "tensorboard", model_spec])
-    if not os.path.exists(tensorboard_dir):
-        os.makedirs(tensorboard_dir)
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
@@ -230,21 +242,41 @@ if __name__ == '__main__':
     logger.addHandler(sh)
     logger.addHandler(fh)
 
-    ### Build model ###
-    if FLAGS.model == 'AE': 
-        model = AE(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
-    elif FLAGS.model == 'VAE':
-        model = VAE(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
-    #elif FLAGS.model == 'VAE_GAN':
-        #model = VAE_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
-    #elif FLAGS.model == 'GAN':
-        #model = GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
-    elif FLAGS.model == 'VANILLA_GAN':
-        model = VANILLA_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
-    elif FLAGS.model == 'INFO_GAN':
-        model = INFO_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
-    elif FLAGS.model == 'VAE_VANILLA_GAN':
-        model = VAE_VANILLA_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    ### ckpt ###
+    ckpt_dir = os.path.join(*[FLAGS.dataset, "ckpt", model_spec])
+    if not os.path.exists(ckpt_dir):
+        os.makedirs(ckpt_dir)
+    ckpt_path = os.path.join(ckpt_dir, "model_ckpt")
 
+    ### tensorboard ### not used 
+    tensorboard_dir = os.path.join(*[FLAGS.dataset, "tensorboard", model_spec])
+    if not os.path.exists(tensorboard_dir):
+        os.makedirs(tensorboard_dir)
+    
+    ### MNIST image ###
+    if mnist_flag == True:
+        image_dir = os.path.join("MNIST/images_visualized", model_spec)
+        if not os.path.exists(image_dir):
+            os.makedirs(image_dir)
 
     tf.app.run()
+
+    """
+    ### Build model ###
+    if FLAGS.model == 'AE': 
+        model = AE(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
+    elif FLAGS.model == 'VAE':
+        model = VAE(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list))
+    #elif FLAGS.model == 'VAE_GAN':
+        #model = VAE_GAN(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    #elif FLAGS.model == 'GAN':
+        #model = GAN(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'VANILLA_GAN':
+        model = VANILLA_GAN(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'INFO_GAN':
+        model = INFO_GAN(FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    elif FLAGS.model == 'VAE_VANILLA_GAN':
+        model = VAE_VANILLA_GAN(logger, FLAGS.gpu_id, FLAGS.learning_rate, FLAGS.loss_type, input_dim, FLAGS.z_dim, eval(FLAGS.ae_h_dim_list), eval(FLAGS.dis_h_dim_list))
+    """
+
+
