@@ -12,15 +12,9 @@ class BaseModel():
         self.input_dim = input_dim
         self.z_dim = z_dim
 
-        #self.keep_prob = 0.9
-
         self.w_init = tf.contrib.layers.variance_scaling_initializer()
 
         self.loss_type = loss_type
-        #self.loss_type = 'CE'
-
-        #self.recon_X_logit = None
-        #self.recon_X = None
 
     def encoder(self, X, enc_h_dim_list, z_dim, keep_prob):
         with tf.variable_scope('enc') as sceop:

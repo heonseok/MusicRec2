@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import tensorflow as tf
+import numpy as np
 
 class Drawer():
     def __init__(self):
@@ -35,3 +36,5 @@ def sample_z(mu, logvar):
 def kl_divergence_normal_distribution(mu, logvar):
     return tf.reduce_mean(0.5 * tf.reduce_sum(tf.exp(logvar) + mu**2 -1 -logvar, 1))
 
+def get_random_normal(batch_size, dim, mean=0., stddev=1.):
+    return np.random.normal(mean, stddev, size=[batch_size, dim])

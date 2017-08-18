@@ -53,7 +53,7 @@ def main(_):
                         batch_xs = data.train.next_batch(FLAGS.batch_size)
                     
                     if FLAGS.model == 'INFO_GAN':
-                        cost_val = model.train_using_info(logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob, FLAGS.batch_size)
+                        cost_val = model.train_using_info(logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
                     else:
                         cost_val = model.train(logger, sess, batch_xs, epoch_idx, batch_idx, train_batch_total, log_flag, FLAGS.keep_prob)
 
@@ -79,7 +79,7 @@ def main(_):
                         batch_xs = data.validation.next_batch(FLAGS.batch_size)
 
                     if FLAGS.model == 'INFO_GAN':
-                        cost_val = model.inference_using_info(logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, valid_batch_total, log_flag, FLAGS.keep_prob, FLAGS.batch_size)
+                        cost_val = model.inference_using_info(logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, valid_batch_total, log_flag, FLAGS.keep_prob)
                     else:
                         cost_val = model.inference(logger, sess, batch_xs, epoch_idx, batch_idx, valid_batch_total, log_flag, 1.0)
                     valid_total_cost += cost_val
@@ -106,7 +106,7 @@ def main(_):
                 if mnist_flag == True:
                     sample_size = 16
                     if FLAGS.model == 'INFO_GAN':
-                        _, samples = model.inference_with_recon_using_info(logger, sess, data.test.images[:sample_size], data.test.labels[:sample_size], 0, 0, 1, False, 1.0, sample_size)
+                        _, samples = model.inference_with_recon_using_info(logger, sess, data.test.images[:sample_size], data.test.labels[:sample_size], 0, 0, 1, False, 1.0)
                     else:
                         _, samples = model.inference_with_recon(logger, sess, data.test.images[:sample_size], 0, 0, 1, False, 1.0)
                     fig = drawer.plot(samples)
