@@ -43,25 +43,25 @@ class INFO_GAN(BaseModel):
             self.dis_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
 
 
-    def train_with_label(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
+    def train_using_info(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob, batch_size):
          for i in range(5):
-              _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
-         _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
+              _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[batch_size, self.z_dim])})
+         _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[batch_size, self.z_dim])})
 
          total_loss_val = dis_loss_val + dec_loss_val
          return total_loss_val
 
-    def inference_with_label(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[256, self.z_dim])})
+    def inference_using_info(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob, batch_size):
+         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[batch_size, self.z_dim])})
+         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[batch_size, self.z_dim])})
 
          total_loss_val = dis_loss_val + dec_loss_val
          return total_loss_val
 
-    def inference_with_recon_with_label(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[16, self.z_dim])})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[16, self.z_dim])})
-         gen_val = sess.run(self.gen_X, feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[16, self.z_dim])})
+    def inference_with_recon_using_info(self, logger, sess, batch_xs, batch_ys, epoch_idx, batch_idx, batch_total, log_flag, keep_prob, batch_size):
+         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[batch_size, self.z_dim])})
+         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[batch_size, self.z_dim])})
+         gen_val = sess.run(self.gen_X, feed_dict={self.X: batch_xs, self.y: batch_ys, self.keep_prob: keep_prob, self.z: np.random.normal(0,1, size=[batch_size, self.z_dim])})
          total_loss_val = dis_loss_val + dec_loss_val
 
          return total_loss_val, gen_val
