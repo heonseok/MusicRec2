@@ -62,7 +62,7 @@ class BaseModel():
                 previous_layer = lrelu(previous_layer)
                 previous_layer = tf.nn.dropout(previous_layer, keep_prob)
 
-            dis_logit = tf.layers.dense(inputs=previous_layer, units=dis_dim, activation=None, name='dis%d'%dis_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            dis_logit = tf.layers.dense(inputs=previous_layer, units=dis_dim, activation=None, name='dis%d'%dis_dim) 
             dis_prob = tf.nn.sigmoid(dis_logit)
 
             return dis_logit, dis_prob
@@ -81,7 +81,7 @@ class BaseModel():
                 previous_layer = lrelu(previous_layer)
                 previous_layer = tf.nn.dropout(previous_layer, keep_prob)
 
-            dis_logit = tf.layers.dense(inputs=previous_layer, units=dis_dim, activation=None, name='dis%d'%dis_dim) #, kernel_initializer=tf.contrib.layers.xavier_initializer)
+            dis_logit = tf.layers.dense(inputs=previous_layer, units=dis_dim, activation=None, name='dis%d'%dis_dim) 
             dis_prob = tf.nn.sigmoid(dis_logit)
 
             return dis_logit, dis_prob, intermediate_layer

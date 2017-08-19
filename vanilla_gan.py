@@ -14,32 +14,35 @@ class VANILLA_GAN(BaseModel):
 
     def build_model(self):
         with tf.device('/gpu:%d' % self.gpu_id):
+            ### Placeholder ###
             self.X = tf.placeholder(tf.float32, [None, self.input_dim])
             self.k = tf.placeholder(tf.int32)
             self.z = tf.placeholder(tf.float32, [None, self.z_dim])
             self.keep_prob = tf.placeholder(tf.float32)
 
+            ### Generating ###
             self.gen_X_logit = self.decoder(self.z, self.dec_h_dim_list, self.input_dim, self.keep_prob, False)
             self.gen_X = tf.nn.sigmoid(self.gen_X_logit)
-            self.gen_X_display = tf.nn.tanh(self.gen_X_logit)
+            self.output = tf.nn.tanh(self.gen_X_logit)
 
+            ### Discriminating ###
             dis_logit_real, _ = self.discriminator(self.X, self.dis_h_dim_list, 1, self.keep_prob, False)
             dis_logit_fake, _ = self.discriminator(self.gen_X, self.dis_h_dim_list, 1, self.keep_prob, True)
+
+            self.dec_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logit_fake, labels=tf.ones_like(dis_logit_fake))) 
 
             self.dis_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logit_real, labels=tf.ones_like(dis_logit_real))) 
             self.dis_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logit_fake, labels=tf.zeros_like(dis_logit_fake))) 
             
-            self.dec_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logit_fake, labels=tf.ones_like(dis_logit_fake))) 
-
-
+            ### Loss ###
             self.dec_loss = self.dec_loss_fake
             self.dis_loss = self.dis_loss_real + self.dis_loss_fake
 
+            ### Theta ###
             dec_theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dec')
             dis_theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dis')
-            #dec_theta = ([x for x in tf.global_variables() if 'dec' in x.name])
-            #dis_theta = ([x for x in tf.global_variables() if 'dis' in x.name])
 
+            ### Solver ###
             self.dec_solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.dec_loss, var_list=dec_theta)
             self.dis_solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
 
@@ -47,30 +50,36 @@ class VANILLA_GAN(BaseModel):
             #self.dis_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
 
     def train(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+        random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
 
-         for i in range(5):
-             _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.keep_prob: keep_prob, self.z: random_z})
+        for i in range(5):
+            _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
+        _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.keep_prob: keep_prob, self.z: random_z})
 
-         total_loss_val = dis_loss_val + dec_loss_val
-         return total_loss_val
+        total_loss_val = dis_loss_val + dec_loss_val
+        if log_flag == True:
+            logger.debug('Epoch %.3i, Batch[%.3i/%i], Dis loss : %.4E, Dec loss : %.4E, Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, dis_loss_val, dec_loss_val, total_loss_val))
+
+        return total_loss_val
 
     def inference(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+        random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
 
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.keep_prob: keep_prob, self.z: random_z})
+        dis_loss_val, dec_loss_val = sess.run([self.dis_loss, self.dec_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
 
-         total_loss_val = dis_loss_val + dec_loss_val
-         return total_loss_val
+        total_loss_val = dis_loss_val + dec_loss_val
+        if log_flag == True:
+            logger.debug('Epoch %.3i, Batch[%.3i/%i], Dis loss : %.4E, Dec loss : %.4E, Valid loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, dis_loss_val, dec_loss_val, total_loss_val))
+
+        return total_loss_val
 
     def inference_with_output(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+        random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
 
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.keep_prob: keep_prob, self.z: random_z})
-         gen_val = sess.run(self.gen_X_display, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         total_loss_val = dis_loss_val + dec_loss_val
+        dis_loss_val, dec_loss_val, output_val = sess.run([self.dis_loss, self.dec_loss, self.output], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
 
-         return total_loss_val, gen_val
+        total_loss_val = dis_loss_val + dec_loss_val
+        if log_flag == True:
+            logger.debug('Epoch %.3i, Batch[%.3i/%i], Dis loss : %.4E, Dec loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, dis_loss_val, dec_loss_val, total_loss_val))
+
+        return total_loss_val, output_val

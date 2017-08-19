@@ -32,7 +32,7 @@ class VAE_VANILLA_GAN(BaseModel):
             ### Decoding ###
             self.recon_X_logit = self.decoder(self.z_sampled, self.dec_h_dim_list, self.input_dim, self.keep_prob, False)
             self.recon_X = tf.nn.sigmoid(self.recon_X_logit)
-            self.recon_X_display = tf.nn.tanh(self.recon_X_logit)
+            self.output = tf.nn.tanh(self.recon_X_logit)
 
             self.recon_loss = self.recon_loss() 
 
@@ -49,7 +49,6 @@ class VAE_VANILLA_GAN(BaseModel):
             self.dis_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logit_real, labels=tf.ones_like(dis_logit_real))) 
             self.dis_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logit_fake, labels=tf.zeros_like(dis_logit_fake))) 
             
-
             ### Loss ###
             self.enc_loss = self.kl_loss + self.recon_loss 
             self.dec_loss = self.recon_loss + self.dec_loss_fake 
@@ -59,8 +58,6 @@ class VAE_VANILLA_GAN(BaseModel):
             enc_theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='enc')
             dec_theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dec')
             dis_theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dis')
-            #dec_theta = ([x for x in tf.global_variables() if 'dec' in x.name])
-            #dis_theta = ([x for x in tf.global_variables() if 'dis' in x.name])
 
             ### Solver ###
             self.enc_solver = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.enc_loss, var_list=enc_theta)
@@ -72,32 +69,37 @@ class VAE_VANILLA_GAN(BaseModel):
             #self.dis_solver = tf.train.AdamOptimizer(self.learning_rate).minimize(self.dis_loss, var_list=dis_theta)
 
     def train(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+        random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+         
+        for i in range(5):
+             _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
+        _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
+        _, enc_loss_val = sess.run([self.enc_solver, self.enc_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob})
 
-         _, dis_loss_val = sess.run([self.dis_solver, self.dis_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         _, dec_loss_val = sess.run([self.dec_solver, self.dec_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         _, enc_loss_val = sess.run([self.enc_solver, self.enc_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob})
+        total_loss_val = dis_loss_val + dec_loss_val + enc_loss_val
+        if log_flag == True:
+            logger.debug('Epoch %.3i, Batch[%.3i/%i], Dis loss : %.4E, Dec loss : %.4E, Enc loss : %.4E, Train loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, dis_loss_val, dec_loss_val, enc_loss_val, total_loss_val))
 
-         total_loss_val = dis_loss_val + dec_loss_val + enc_loss_val
-         return total_loss_val
+        return total_loss_val
 
     def inference(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+        random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
 
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         enc_loss_val = sess.run(self.enc_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob})
+        dis_loss_val, dec_loss_val, enc_loss_val = sess.run([self.dis_loss, self.dec_loss, self.enc_loss], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
 
-         total_loss_val = dis_loss_val + dec_loss_val + enc_loss_val
-         return total_loss_val
+        total_loss_val = dis_loss_val + dec_loss_val + enc_loss_val
+        if log_flag == True:
+            logger.debug('Epoch %.3i, Batch[%.3i/%i], Dis loss : %.4E, Dec loss : %.4E, Enc loss : %.4E, Valid loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, dis_loss_val, dec_loss_val, enc_loss_val, total_loss_val))
+
+        return total_loss_val
 
     def inference_with_output(self, logger, sess, batch_xs, epoch_idx, batch_idx, batch_total, log_flag, keep_prob):
-         random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
+        random_z = get_random_normal(batch_xs.shape[0], self.z_dim)
 
-         dis_loss_val = sess.run(self.dis_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         dec_loss_val = sess.run(self.dec_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
-         enc_loss_val = sess.run(self.enc_loss, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob})
-         recon_val = sess.run(self.recon_X_display, feed_dict={self.X: batch_xs, self.keep_prob: keep_prob})
-         total_loss_val = dis_loss_val + dec_loss_val + enc_loss_val
+        dis_loss_val, dec_loss_val, enc_loss_val, output_val = sess.run([self.dis_loss, self.dec_loss, self.enc_loss, self.output], feed_dict={self.X: batch_xs, self.keep_prob: keep_prob, self.z: random_z})
 
-         return total_loss_val, recon_val
+        total_loss_val = dis_loss_val + dec_loss_val + enc_loss_val
+        if log_flag == True:
+            logger.debug('Epoch %.3i, Batch[%.3i/%i], Dis loss : %.4E, Dec loss : %.4E, Enc loss : %.4E, Test loss: %.4E' % (epoch_idx, batch_idx + 1, batch_total, dis_loss_val, dec_loss_val, enc_loss_val, total_loss_val))
+
+        return total_loss_val, output_val
